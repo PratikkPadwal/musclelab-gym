@@ -1,0 +1,2532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MuscleLab Gym Management</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #E31E24;
+      --primary-dark: #b81a1f;
+      --primary-glow: rgba(227,30,36,0.12);
+      --bg: #0a0a0a;
+      --bg2: #111111;
+      --bg3: #171717;
+      --bg4: #1e1e1e;
+      --border: #222222;
+      --border2: #2e2e2e;
+      --text: #f0f0f0;
+      --text2: #888888;
+      --text3: #555555;
+      --success: #22c55e;
+      --success-bg: rgba(34,197,94,0.10);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245,158,11,0.10);
+      --danger: #ef4444;
+      --danger-bg: rgba(239,68,68,0.10);
+      --info: #3b82f6;
+      --info-bg: rgba(59,130,246,0.10);
+      --purple: #8b5cf6;
+      --purple-bg: rgba(139,92,246,0.10);
+      --sidebar-w: 260px;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --shadow: 0 8px 40px rgba(0,0,0,0.7);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      font-size: 14px;
+      overflow-x: hidden;
+    }
+
+    a { text-decoration: none; color: inherit; cursor: pointer; }
+    button { cursor: pointer; font-family: inherit; border: none; outline: none; }
+    input, select, textarea { font-family: inherit; }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+    /* ── LOGIN ─────────────────────────────────────────── */
+    #loginPage {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(227,30,36,0.10) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 80% 90%, rgba(227,30,36,0.05) 0%, transparent 60%);
+    }
+
+    .login-box {
+      width: 100%;
+      max-width: 420px;
+      margin: 20px;
+      padding: 48px 40px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .login-logo { text-align: center; margin-bottom: 36px; }
+    .logo-text { font-size: 38px; font-weight: 900; letter-spacing: -1.5px; line-height: 1; display: block; }
+    .logo-muscle { color: var(--text); }
+    .logo-lab { color: var(--primary); }
+    .logo-sub { font-size: 10px; letter-spacing: 3.5px; color: var(--text2); margin-top: 6px; font-weight: 600; text-transform: uppercase; }
+
+    .login-title { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+    .login-subtitle { text-align: center; color: var(--text2); font-size: 13px; margin-bottom: 30px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block; font-size: 11px; font-weight: 700;
+      color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%; padding: 11px 14px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text);
+      font-size: 14px; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+    .form-group select option { background: var(--bg3); }
+    .form-group textarea { resize: vertical; min-height: 78px; }
+
+    .login-error {
+      background: var(--danger-bg); color: var(--danger);
+      border: 1px solid rgba(239,68,68,0.25); padding: 10px 14px;
+      border-radius: var(--radius); font-size: 13px; margin-bottom: 16px; text-align: center;
+    }
+
+    /* ── BUTTONS ───────────────────────────────────────── */
+    .btn {
+      padding: 10px 20px; border-radius: var(--radius);
+      font-size: 13px; font-weight: 600; transition: all 0.18s;
+      display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(227,30,36,0.35); }
+    .btn-secondary { background: var(--bg4); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--bg3); border-color: var(--border2); }
+    .btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
+    .btn-success { background: var(--success-bg); color: var(--success); border: 1px solid rgba(34,197,94,0.2); }
+    .btn-success:hover { background: var(--success); color: #fff; }
+    .btn-icon { padding: 7px 9px; background: var(--bg4); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text2); }
+    .btn-icon:hover { background: var(--bg3); color: var(--text); }
+    .btn-whatsapp { background: rgba(37,211,102,0.10); color: #25D366; border: 1px solid rgba(37,211,102,0.2); }
+    .btn-whatsapp:hover { background: #25D366; color: #fff; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-lg { padding: 13px 28px; font-size: 15px; }
+    .btn-full { width: 100%; justify-content: center; }
+
+    /* ── APP LAYOUT ────────────────────────────────────── */
+    #appContainer { display: flex; min-height: 100vh; }
+
+    #sidebar {
+      width: var(--sidebar-w); min-height: 100vh;
+      background: var(--bg2); border-right: 1px solid var(--border);
+      position: fixed; left: 0; top: 0; bottom: 0; z-index: 100;
+      display: flex; flex-direction: column; transition: transform 0.3s ease; overflow-y: auto;
+    }
+
+    .sidebar-header { padding: 22px 20px 16px; border-bottom: 1px solid var(--border); }
+    .sidebar-logo { font-size: 24px; font-weight: 900; letter-spacing: -0.5px; }
+    .sidebar-tagline { font-size: 9px; color: var(--text2); letter-spacing: 2.5px; margin-top: 3px; font-weight: 600; text-transform: uppercase; }
+
+    .sidebar-nav { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: var(--radius);
+      color: var(--text2); font-size: 13.5px; font-weight: 500;
+      transition: all 0.15s; user-select: none; cursor: pointer;
+    }
+    .nav-item:hover { background: var(--bg4); color: var(--text); }
+    .nav-item.active { background: var(--primary-glow); color: var(--primary); font-weight: 600; }
+    .nav-icon { font-size: 17px; min-width: 22px; text-align: center; }
+    .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
+    .nav-logout:hover { background: var(--danger-bg) !important; color: var(--danger) !important; }
+
+    #mainContent { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-height: 100vh; }
+
+    .app-header {
+      height: 56px; background: var(--bg2); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 24px; gap: 14px;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .hamburger { display: none; background: none; font-size: 20px; color: var(--text); padding: 4px 8px; }
+    .header-title { font-size: 17px; font-weight: 700; flex: 1; }
+    .header-user { font-size: 12.5px; color: var(--text2); }
+
+    .page-content { flex: 1; padding: 24px; }
+    .page { display: none; }
+    .page.active { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    #sidebarOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 99; }
+    #sidebarOverlay.show { display: block; }
+
+    /* ── STATS GRID ────────────────────────────────────── */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 14px; margin-bottom: 22px; }
+    .stat-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 20px; position: relative;
+      overflow: hidden; transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 3px; background: var(--primary);
+    }
+    .stat-card.green::before { background: var(--success); }
+    .stat-card.orange::before { background: var(--warning); }
+    .stat-card.blue::before { background: var(--info); }
+    .stat-card.purple::before { background: var(--purple); }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,0.4); }
+    .stat-icon { font-size: 26px; display: block; margin-bottom: 12px; }
+    .stat-number { font-size: 26px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+    .stat-number.green { color: var(--success); }
+    .stat-number.orange { color: var(--warning); }
+    .stat-number.blue { color: var(--info); }
+    .stat-number.purple { color: var(--purple); }
+    .stat-label { font-size: 11.5px; color: var(--text2); font-weight: 500; }
+
+    /* ── SECTION / CARD ────────────────────────────────── */
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .section-title { font-size: 16px; font-weight: 700; }
+    .section-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 18px; }
+
+    /* ── TABLES ────────────────────────────────────────── */
+    .table-wrapper { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    thead th {
+      padding: 10px 14px; text-align: left;
+      font-size: 11px; font-weight: 700; color: var(--text2);
+      text-transform: uppercase; letter-spacing: 0.6px;
+      border-bottom: 1px solid var(--border); background: var(--bg3); white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.12s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg3); }
+    td { padding: 12px 14px; vertical-align: middle; }
+    .td-muted { color: var(--text2); font-size: 12.5px; }
+
+    /* ── BADGES ────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+    }
+    .badge-green { background: var(--success-bg); color: var(--success); border: 1px solid rgba(34,197,94,0.25); }
+    .badge-red { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(239,68,68,0.25); }
+    .badge-orange { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(245,158,11,0.25); }
+    .badge-blue { background: var(--info-bg); color: var(--info); border: 1px solid rgba(59,130,246,0.25); }
+    .badge-purple { background: var(--purple-bg); color: var(--purple); border: 1px solid rgba(139,92,246,0.25); }
+    .badge-gray { background: var(--bg4); color: var(--text2); border: 1px solid var(--border); }
+
+    /* ── TOOLBAR / SEARCH ──────────────────────────────── */
+    .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+    .search-box {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 8px 14px; flex: 1; min-width: 200px;
+    }
+    .search-box input { background: none; border: none; color: var(--text); font-size: 13px; outline: none; width: 100%; }
+    .search-box input::placeholder { color: var(--text3); }
+    .filter-select {
+      padding: 8px 12px; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text); font-size: 13px; outline: none;
+    }
+    .filter-select:focus { border-color: var(--primary); }
+
+    /* ── ACTIONS ───────────────────────────────────────── */
+    .actions-group { display: flex; gap: 5px; align-items: center; flex-wrap: nowrap; }
+
+    /* ── MODALS ────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.82); z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); width: 100%; max-width: 620px;
+      max-height: 92vh; overflow-y: auto;
+      transform: translateY(-12px); transition: transform 0.22s;
+      box-shadow: var(--shadow);
+    }
+    .modal-overlay.active .modal { transform: translateY(0); }
+    .modal-lg { max-width: 820px; }
+    .modal-sm { max-width: 430px; }
+    .modal-header {
+      padding: 20px 24px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; background: var(--bg2); z-index: 1;
+    }
+    .modal-title { font-size: 16px; font-weight: 700; }
+    .modal-close {
+      background: var(--bg4); border: 1px solid var(--border);
+      color: var(--text2); width: 32px; height: 32px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center; font-size: 15px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .modal-close:hover { background: var(--danger-bg); color: var(--danger); border-color: transparent; }
+    .modal-body { padding: 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+
+    /* ── FORM GRID ─────────────────────────────────────── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .col-span-2 { grid-column: span 2; }
+    .col-span-3 { grid-column: span 3; }
+
+    /* ── TOAST ─────────────────────────────────────────── */
+    #toastContainer { position: fixed; bottom: 24px; right: 24px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      padding: 12px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 500;
+      min-width: 270px; max-width: 380px; box-shadow: var(--shadow);
+      display: flex; align-items: center; gap: 10px;
+      border-left: 4px solid; background: var(--bg2);
+      animation: toastIn 0.3s ease;
+    }
+    .toast-success { border-color: var(--success); }
+    .toast-error { border-color: var(--danger); }
+    .toast-info { border-color: var(--info); }
+    .toast-warning { border-color: var(--warning); }
+    @keyframes toastIn { from { transform: translateX(80px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes toastOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(80px); opacity: 0; } }
+
+    /* ── PLANS ─────────────────────────────────────────── */
+    .plans-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+    .plan-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 24px; position: relative; transition: all 0.2s;
+    }
+    .plan-card:hover { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary), 0 8px 28px rgba(227,30,36,0.12); }
+    .plan-badge { position: absolute; top: 16px; right: 16px; background: var(--primary-glow); color: var(--primary); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+    .plan-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .plan-duration { color: var(--text2); font-size: 12px; margin-bottom: 14px; }
+    .plan-price { font-size: 34px; font-weight: 900; color: var(--primary); line-height: 1; margin-bottom: 2px; }
+    .plan-price-label { font-size: 11px; color: var(--text3); margin-bottom: 14px; }
+    .plan-members { font-size: 12px; color: var(--text2); margin-bottom: 16px; }
+    .plan-desc { font-size: 12px; color: var(--text2); margin-bottom: 16px; line-height: 1.5; }
+    .plan-actions { display: flex; gap: 8px; }
+
+    /* ── STAFF ─────────────────────────────────────────── */
+    .staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 16px; }
+    .staff-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 24px;
+      display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.2s;
+    }
+    .staff-card:hover { border-color: var(--border2); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    .staff-avatar {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: var(--bg4); border: 3px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 34px; margin-bottom: 16px; overflow: hidden;
+    }
+    .staff-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .staff-name { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .staff-role { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; margin-bottom: 14px; }
+    .role-admin { background: var(--danger-bg); color: var(--danger); }
+    .role-receptionist { background: var(--info-bg); color: var(--info); }
+    .role-trainer { background: var(--success-bg); color: var(--success); }
+    .staff-info { font-size: 12.5px; color: var(--text2); line-height: 2; margin-bottom: 16px; }
+    .staff-actions { display: flex; gap: 8px; }
+
+    /* ── MEMBERS ───────────────────────────────────────── */
+    .member-thumb {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--bg4); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; overflow: hidden; flex-shrink: 0;
+    }
+    .member-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* ── DASHBOARD ─────────────────────────────────────── */
+    .dashboard-grid { display: grid; grid-template-columns: 1fr 380px; gap: 18px; }
+    .quick-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .expiry-list { display: flex; flex-direction: column; gap: 8px; }
+    .expiry-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; background: var(--bg3); border-radius: var(--radius);
+      border-left: 3px solid var(--warning);
+    }
+    .expiry-item.expired { border-left-color: var(--danger); }
+
+    /* ── PAYMENTS ──────────────────────────────────────── */
+    .daily-summary {
+      background: linear-gradient(135deg, var(--bg2), var(--bg3));
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 18px 24px; margin-bottom: 18px;
+      display: flex; gap: 28px; align-items: center; flex-wrap: wrap;
+    }
+    .daily-summary-item { text-align: center; }
+    .daily-summary-num { font-size: 22px; font-weight: 800; color: var(--primary); }
+    .daily-summary-label { font-size: 10px; color: var(--text2); font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; }
+
+    /* ── ENQUIRIES ─────────────────────────────────────── */
+    .status-select {
+      padding: 4px 8px; background: var(--bg4); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text); font-size: 12px; outline: none;
+    }
+    .overdue { color: var(--danger) !important; font-weight: 600; }
+
+    /* ── ANALYTICS ─────────────────────────────────────── */
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+    .chart-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; }
+    .chart-title { font-size: 13.5px; font-weight: 600; margin-bottom: 18px; }
+    .chart-wrap { position: relative; height: 240px; }
+
+    /* ── MEMBER PROFILE ────────────────────────────────── */
+    .profile-hdr {
+      display: flex; align-items: center; gap: 20px;
+      background: var(--bg3); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 22px;
+      flex-wrap: wrap;
+    }
+    .profile-avatar {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: var(--bg4); border: 3px solid var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px; overflow: hidden; flex-shrink: 0;
+    }
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .profile-id { font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+    .profile-details { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+    .detail-item label { display: block; font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 3px; font-weight: 700; }
+    .detail-item span { font-size: 13.5px; font-weight: 500; }
+
+    /* ── CONFIRM ───────────────────────────────────────── */
+    .confirm-icon { font-size: 44px; text-align: center; margin-bottom: 14px; }
+    .confirm-title { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+    .confirm-text { font-size: 13px; color: var(--text2); text-align: center; margin-bottom: 22px; }
+
+    /* ── EMPTY STATE ───────────────────────────────────── */
+    .empty-state { text-align: center; padding: 50px 20px; color: var(--text2); }
+    .empty-icon { font-size: 48px; margin-bottom: 14px; }
+    .empty-title { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+    .empty-text { font-size: 13px; margin-bottom: 22px; }
+
+    /* ── RESPONSIVE ────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .charts-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      #sidebar { transform: translateX(-100%); }
+      #sidebar.open { transform: translateX(0); }
+      #mainContent { margin-left: 0; }
+      .hamburger { display: block; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid.cols-3 { grid-template-columns: 1fr; }
+      .col-span-2, .col-span-3 { grid-column: span 1; }
+      .page-content { padding: 14px; }
+      .modal { max-width: 100% !important; }
+      .profile-details { grid-template-columns: 1fr; }
+      .staff-grid { grid-template-columns: 1fr; }
+      .plans-grid { grid-template-columns: 1fr; }
+      .daily-summary { gap: 18px; }
+      .login-box { padding: 32px 22px; }
+      .quick-actions .btn { flex: 1; justify-content: center; }
+    }
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .stat-number { font-size: 22px; }
+    }
+    /* ── LOADER ─────────────────────────────────────────── */
+    #appLoader { position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px; }
+    .spinner { width:44px;height:44px;border:3px solid var(--border2);border-top-color:var(--primary);border-radius:50%;animation:spin 0.75s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .loader-text { color:var(--text2);font-size:13px;font-weight:500;letter-spacing:0.3px; }
+
+    /* ── SETUP SCREEN ────────────────────────────────────── */
+    #setupPage { min-height:100vh;display:none;align-items:center;justify-content:center;background:var(--bg);background-image:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(227,30,36,0.10) 0%,transparent 60%); }
+
+    /* ── SETTINGS PAGE ───────────────────────────────────── */
+    .settings-section { background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:20px; }
+    .settings-section-title { font-size:15px;font-weight:700;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border); }
+
+    /* ── USER TAGS ───────────────────────────────────────── */
+    .user-tag { display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700; }
+    .user-tag-admin { background:var(--danger-bg);color:var(--danger); }
+    .user-tag-receptionist { background:var(--info-bg);color:var(--info); }
+    .user-tag-trainer { background:var(--success-bg);color:var(--success); }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════ LOGIN PAGE ══════════════════ -->
+<div id="loginPage" style="display:none">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="logo-text"><span class="logo-muscle">MUSCLE</span><span class="logo-lab">LAB</span></span>
+      <div class="logo-sub">Gym Management System</div>
+    </div>
+    <h2 class="login-title">Welcome Back</h2>
+    <p class="login-subtitle">Sign in to manage your gym</p>
+    <form onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="loginUser" placeholder="Enter email address" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password">
+      </div>
+      <div id="loginError" class="login-error" style="display:none">❌ Invalid email or password</div>
+      <button type="submit" class="btn btn-primary btn-full btn-lg" style="margin-top:4px">Login &rarr;</button>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════════ SETUP PAGE ══════════════════ -->
+<div id="setupPage">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="logo-text"><span class="logo-muscle">MUSCLE</span><span class="logo-lab">LAB</span></span>
+      <div class="logo-sub">First Time Setup</div>
+    </div>
+    <h2 class="login-title">Create Admin Account</h2>
+    <p class="login-subtitle">No admin found. Set up your first admin account to get started.</p>
+    <form onsubmit="setupAdmin(event)">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="setupName" placeholder="Your full name" required>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="setupEmail" placeholder="admin@yourgym.com" required>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="setupPass" placeholder="Min 6 characters" required minlength="6">
+      </div>
+      <div id="setupError" class="login-error" style="display:none"></div>
+      <button type="submit" class="btn btn-primary btn-full btn-lg" style="margin-top:4px">Create Admin Account &rarr;</button>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════════ MAIN APP ══════════════════ -->
+<div id="appContainer" style="display:none">
+
+  <div id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo"><span class="logo-muscle">MUSCLE</span><span class="logo-lab">LAB</span></div>
+      <div class="sidebar-tagline">Gym Management</div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item" data-page="dashboard" onclick="navigate('dashboard')"><span class="nav-icon">🏠</span><span>Dashboard</span></a>
+      <a class="nav-item" data-page="members"   data-requires-role="admin receptionist" onclick="navigate('members')"><span class="nav-icon">👥</span><span>Members</span></a>
+      <a class="nav-item" data-page="plans"     data-requires-role="admin receptionist" onclick="navigate('plans')"><span class="nav-icon">💳</span><span>Plans</span></a>
+      <a class="nav-item" data-page="payments"  data-requires-role="admin receptionist" onclick="navigate('payments')"><span class="nav-icon">💰</span><span>Payments</span></a>
+      <a class="nav-item" data-page="enquiries" onclick="navigate('enquiries')"><span class="nav-icon">📋</span><span>Enquiries</span></a>
+      <a class="nav-item" data-page="staff"     data-requires-role="admin" onclick="navigate('staff')"><span class="nav-icon">👨‍💼</span><span>Staff</span></a>
+      <a class="nav-item" data-page="analytics" data-requires-role="admin" onclick="navigate('analytics')"><span class="nav-icon">📈</span><span>Analytics</span></a>
+      <a class="nav-item" data-page="settings"  data-requires-role="admin" onclick="navigate('settings')"><span class="nav-icon">⚙️</span><span>Settings</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <a class="nav-item nav-logout" onclick="doLogout()"><span class="nav-icon">🚪</span><span>Logout</span></a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div id="mainContent">
+    <header class="app-header">
+      <button class="hamburger" onclick="toggleSidebar()">&#9776;</button>
+      <div class="header-title" id="headerTitle">Dashboard</div>
+      <div class="header-right"><span class="header-user" id="headerUserName">👤 Admin</span></div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- ─── DASHBOARD ─────────────────────────── -->
+      <div id="dashboardPage" class="page active">
+        <div class="section-header" style="margin-bottom:18px">
+          <div>
+            <div class="section-title" style="font-size:20px">Welcome back, Admin! 👋</div>
+            <div class="section-sub" id="dashDate"></div>
+          </div>
+        </div>
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="quick-actions">
+          <button class="btn btn-primary" data-requires-role="admin receptionist" onclick="openMemberModal()">➕ Add Member</button>
+          <button class="btn btn-secondary" data-requires-role="admin receptionist" onclick="openPaymentModal()">💰 Record Payment</button>
+          <button class="btn btn-secondary" onclick="openEnquiryModal()">📋 Add Enquiry</button>
+        </div>
+        <div class="dashboard-grid">
+          <div>
+            <div class="card">
+              <div class="section-header"><div class="section-title">Recent Members</div><a onclick="navigate('members')" style="color:var(--primary);font-size:12px">View all →</a></div>
+              <div class="table-wrapper" id="dashRecentMembers"></div>
+            </div>
+            <div class="card">
+              <div class="section-header"><div class="section-title">Recent Payments</div><a onclick="navigate('payments')" style="color:var(--primary);font-size:12px">View all →</a></div>
+              <div class="table-wrapper" id="dashRecentPayments"></div>
+            </div>
+          </div>
+          <div>
+            <div class="card">
+              <div class="section-header">
+                <div class="section-title">⚠️ Expiring This Week</div>
+                <span id="expiringBadge" class="badge badge-orange">0</span>
+              </div>
+              <div id="expiringList" class="expiry-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── MEMBERS ───────────────────────────── -->
+      <div id="membersPage" class="page">
+        <div class="section-header" style="margin-bottom:18px">
+          <div><div class="section-title" style="font-size:20px">Members</div><div class="section-sub">Manage gym members</div></div>
+          <button class="btn btn-primary" data-requires-role="admin receptionist" onclick="openMemberModal()">➕ Add Member</button>
+        </div>
+        <div class="toolbar">
+          <div class="search-box">🔍 <input type="text" id="memberSearch" placeholder="Search by name or phone…" oninput="renderMembers()"></div>
+          <select class="filter-select" id="memberFilter" onchange="renderMembers()">
+            <option value="all">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Expiring">Expiring Soon</option>
+            <option value="Expired">Expired</option>
+          </select>
+        </div>
+        <div class="card" style="padding:0"><div class="table-wrapper" id="membersTable"></div></div>
+      </div>
+
+      <!-- ─── PLANS ─────────────────────────────── -->
+      <div id="plansPage" class="page">
+        <div class="section-header" style="margin-bottom:22px">
+          <div><div class="section-title" style="font-size:20px">Membership Plans</div><div class="section-sub">Manage pricing &amp; packages</div></div>
+          <button class="btn btn-primary" data-requires-role="admin" onclick="openPlanModal()">➕ Add Plan</button>
+        </div>
+        <div class="plans-grid" id="plansGrid"></div>
+      </div>
+
+      <!-- ─── PAYMENTS ──────────────────────────── -->
+      <div id="paymentsPage" class="page">
+        <div class="section-header" style="margin-bottom:18px">
+          <div><div class="section-title" style="font-size:20px">Payments</div><div class="section-sub">Track all transactions</div></div>
+          <div style="display:flex;gap:8px" data-requires-role="admin receptionist">
+            <button class="btn btn-secondary" onclick="exportCSV()">📤 Export CSV</button>
+            <button class="btn btn-primary" onclick="openPaymentModal()">➕ Record Payment</button>
+          </div>
+        </div>
+        <div class="daily-summary" id="dailySummary"></div>
+        <div class="toolbar">
+          <div class="search-box">🔍 <input type="text" id="paySearch" placeholder="Search by member…" oninput="renderPayments()"></div>
+          <input type="date" class="filter-select" id="payFrom" onchange="renderPayments()">
+          <input type="date" class="filter-select" id="payTo" onchange="renderPayments()">
+          <select class="filter-select" id="payModeFilter" onchange="renderPayments()">
+            <option value="all">All Modes</option>
+            <option value="Cash">Cash</option>
+            <option value="UPI">UPI</option>
+            <option value="Card">Card</option>
+          </select>
+        </div>
+        <div class="card" style="padding:0"><div class="table-wrapper" id="paymentsTable"></div></div>
+      </div>
+
+      <!-- ─── ENQUIRIES ─────────────────────────── -->
+      <div id="enquiriesPage" class="page">
+        <div class="section-header" style="margin-bottom:18px">
+          <div><div class="section-title" style="font-size:20px">Enquiries</div><div class="section-sub">Track leads &amp; follow-ups</div></div>
+          <button class="btn btn-primary" onclick="openEnquiryModal()">➕ Add Enquiry</button>
+        </div>
+        <div class="toolbar">
+          <div class="search-box">🔍 <input type="text" id="enqSearch" placeholder="Search by name or phone…" oninput="renderEnquiries()"></div>
+          <select class="filter-select" id="enqStatusFilter" onchange="renderEnquiries()">
+            <option value="all">All Status</option>
+            <option value="New">New</option>
+            <option value="Contacted">Contacted</option>
+            <option value="Interested">Interested</option>
+            <option value="Converted">Converted</option>
+            <option value="Lost">Lost</option>
+          </select>
+        </div>
+        <div class="card" style="padding:0"><div class="table-wrapper" id="enquiriesTable"></div></div>
+      </div>
+
+      <!-- ─── STAFF ─────────────────────────────── -->
+      <div id="staffPage" class="page">
+        <div class="section-header" style="margin-bottom:22px">
+          <div><div class="section-title" style="font-size:20px">Staff</div><div class="section-sub">Manage gym team</div></div>
+          <button class="btn btn-primary" data-requires-role="admin" onclick="openStaffModal()">➕ Add Staff</button>
+        </div>
+        <div class="staff-grid" id="staffGrid"></div>
+      </div>
+
+      <!-- ─── ANALYTICS ─────────────────────────── -->
+      <div id="analyticsPage" class="page">
+        <div class="section-header" style="margin-bottom:22px">
+          <div><div class="section-title" style="font-size:20px">Analytics</div><div class="section-sub">Performance insights</div></div>
+        </div>
+        <div class="stats-grid" id="analyticsStats"></div>
+        <div class="charts-grid">
+          <div class="chart-card"><div class="chart-title">📊 Monthly Revenue — Last 6 Months</div><div class="chart-wrap"><canvas id="chartRevenue"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">📈 New Members — Last 6 Months</div><div class="chart-wrap"><canvas id="chartMembers"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">🥧 Plan Distribution</div><div class="chart-wrap"><canvas id="chartPlans"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">🎯 Enquiry Sources</div><div class="chart-wrap"><canvas id="chartSources"></canvas></div></div>
+        </div>
+      </div>
+
+      <!-- ─── SETTINGS ──────────────────────────── -->
+      <div id="settingsPage" class="page">
+        <div class="section-header" style="margin-bottom:22px">
+          <div><div class="section-title" style="font-size:20px">Settings</div><div class="section-sub">Gym configuration &amp; team management</div></div>
+        </div>
+        <!-- Gym Settings -->
+        <div class="settings-section">
+          <div class="settings-section-title">🏋️ Gym Settings</div>
+          <div class="form-grid" style="max-width:600px">
+            <div class="form-group">
+              <label>Gym Name</label>
+              <input type="text" id="settingsGymName" placeholder="MuscleLab Gym">
+            </div>
+            <div class="form-group">
+              <label>Gym Phone (for WhatsApp)</label>
+              <input type="tel" id="settingsGymPhone" placeholder="e.g. 9876543210">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="saveGymSettings()" style="margin-top:4px">💾 Save Gym Settings</button>
+        </div>
+        <!-- User Management (admin only) -->
+        <div class="settings-section" id="userMgmtSection">
+          <div class="settings-section-title">👥 User Management</div>
+          <div style="margin-bottom:24px">
+            <div style="font-size:12px;font-weight:700;color:var(--text2);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:12px">Create New User</div>
+            <div class="form-grid" style="max-width:700px">
+              <div class="form-group"><label>Full Name *</label><input type="text" id="newUserName" placeholder="Enter full name"></div>
+              <div class="form-group"><label>Email *</label><input type="email" id="newUserEmail" placeholder="user@email.com"></div>
+              <div class="form-group"><label>Password *</label><input type="password" id="newUserPass" placeholder="Min 6 characters"></div>
+              <div class="form-group">
+                <label>Role *</label>
+                <select id="newUserRole">
+                  <option value="admin">Admin</option>
+                  <option value="receptionist" selected>Receptionist</option>
+                  <option value="trainer">Trainer</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="createAppUser()" style="margin-top:4px">➕ Create User</button>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--text2);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:12px">Existing Users</div>
+            <div id="usersListAdmin"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-content -->
+  </div><!-- /mainContent -->
+</div><!-- /appContainer -->
+
+<!-- ══════════════════ MODALS ══════════════════ -->
+
+<!-- ADD / EDIT MEMBER -->
+<div class="modal-overlay" id="memberModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="memberModalTitle">Add New Member</div>
+      <button class="modal-close" onclick="closeModal('memberModal')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Member ID</label>
+          <input type="text" id="mId" readonly style="opacity:.55;cursor:not-allowed">
+        </div>
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" id="mName" placeholder="Enter full name">
+        </div>
+        <div class="form-group">
+          <label>Phone Number *</label>
+          <input type="tel" id="mPhone" placeholder="10-digit mobile number">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="mEmail" placeholder="Optional">
+        </div>
+        <div class="form-group">
+          <label>Date of Birth</label>
+          <input type="date" id="mDob">
+        </div>
+        <div class="form-group">
+          <label>Gender</label>
+          <select id="mGender">
+            <option value="">Select</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group col-span-2">
+          <label>Address</label>
+          <input type="text" id="mAddress" placeholder="Full address">
+        </div>
+        <div class="form-group">
+          <label>Emergency Contact</label>
+          <input type="tel" id="mEmergency" placeholder="Emergency phone">
+        </div>
+        <div class="form-group">
+          <label>Join Date *</label>
+          <input type="date" id="mJoinDate">
+        </div>
+        <div class="form-group">
+          <label>Select Plan *</label>
+          <select id="mPlan" onchange="onMemberPlanChange()">
+            <option value="">Select a plan</option>
+          </select>
+        </div>
+        <div class="form-group" id="mPayAmtWrap">
+          <label>Payment Amount (₹) *</label>
+          <input type="number" id="mPayAmt" placeholder="Enter amount" min="0">
+        </div>
+        <div class="form-group" id="mPayModeWrap">
+          <label>Payment Mode</label>
+          <select id="mPayMode">
+            <option value="Cash">Cash</option>
+            <option value="UPI">UPI</option>
+            <option value="Card">Card</option>
+          </select>
+        </div>
+        <div class="form-group col-span-2">
+          <label>Photo (Optional)</label>
+          <input type="file" id="mPhoto" accept="image/*" onchange="previewPhoto(this,'mPhotoPreview')">
+          <div id="mPhotoPreview" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('memberModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMember()">Save Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- MEMBER PROFILE -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">Member Profile</div>
+      <button class="modal-close" onclick="closeModal('profileModal')">&#10005;</button>
+    </div>
+    <div class="modal-body" id="profileBody"></div>
+  </div>
+</div>
+
+<!-- ADD / EDIT PLAN -->
+<div class="modal-overlay" id="planModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title" id="planModalTitle">Add New Plan</div>
+      <button class="modal-close" onclick="closeModal('planModal')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Plan Name *</label><input type="text" id="pName" placeholder="e.g. Monthly, Quarterly"></div>
+      <div class="form-group"><label>Duration (Days) *</label><input type="number" id="pDays" placeholder="e.g. 30" min="1"></div>
+      <div class="form-group"><label>Price (₹) *</label><input type="number" id="pPrice" placeholder="Enter price" min="0"></div>
+      <div class="form-group"><label>Description</label><textarea id="pDesc" placeholder="Optional description"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('planModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="savePlan()">Save Plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECORD PAYMENT -->
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">Record Payment</div>
+      <button class="modal-close" onclick="closeModal('paymentModal')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Select Member *</label><select id="payMember" onchange="onPayMemberChange()"><option value="">Select member</option></select></div>
+      <div class="form-group"><label>Select Plan *</label><select id="payPlan" onchange="onPayPlanChange()"><option value="">Select plan</option></select></div>
+      <div class="form-group"><label>Amount (₹) *</label><input type="number" id="payAmt" placeholder="Enter amount" min="0"></div>
+      <div class="form-group">
+        <label>Payment Mode *</label>
+        <select id="payMode">
+          <option value="Cash">Cash</option>
+          <option value="UPI">UPI</option>
+          <option value="Card">Card</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Date *</label><input type="date" id="payDate"></div>
+      <div class="form-group"><label>Note</label><input type="text" id="payNote" placeholder="Optional note"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('paymentModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="savePayment()">Record Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT ENQUIRY -->
+<div class="modal-overlay" id="enquiryModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="enquiryModalTitle">Add Enquiry</div>
+      <button class="modal-close" onclick="closeModal('enquiryModal')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Name *</label><input type="text" id="eqName" placeholder="Full name"></div>
+        <div class="form-group"><label>Phone *</label><input type="tel" id="eqPhone" placeholder="Phone number"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="eqEmail" placeholder="Optional"></div>
+        <div class="form-group">
+          <label>Interested Plan</label>
+          <select id="eqPlan"><option value="">Select plan</option></select>
+        </div>
+        <div class="form-group">
+          <label>Source</label>
+          <select id="eqSource">
+            <option value="Walk-in">Walk-in</option>
+            <option value="Instagram">Instagram</option>
+            <option value="WhatsApp">WhatsApp</option>
+            <option value="Referral">Referral</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Follow Up Date</label><input type="date" id="eqFollowUp"></div>
+        <div class="form-group col-span-2"><label>Notes</label><textarea id="eqNotes" placeholder="Additional notes…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('enquiryModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEnquiry()">Save Enquiry</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT STAFF -->
+<div class="modal-overlay" id="staffModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="staffModalTitle">Add Staff</div>
+      <button class="modal-close" onclick="closeModal('staffModal')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Name *</label><input type="text" id="sfName" placeholder="Full name"></div>
+        <div class="form-group"><label>Phone *</label><input type="tel" id="sfPhone" placeholder="Phone number"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="sfEmail" placeholder="Optional"></div>
+        <div class="form-group">
+          <label>Role *</label>
+          <select id="sfRole">
+            <option value="Admin">Admin</option>
+            <option value="Receptionist">Receptionist</option>
+            <option value="Trainer">Trainer</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Salary (₹/month)</label><input type="number" id="sfSalary" placeholder="Monthly salary" min="0"></div>
+        <div class="form-group"><label>Join Date *</label><input type="date" id="sfJoinDate"></div>
+        <div class="form-group col-span-2">
+          <label>Photo (Optional)</label>
+          <input type="file" id="sfPhoto" accept="image/*" onchange="previewPhoto(this,'sfPhotoPreview')">
+          <div id="sfPhotoPreview" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('staffModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStaff()">Save Staff</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ Settings</div>
+      <button class="modal-close" onclick="closeModal('settingsModal')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Gym Name</label>
+        <input type="text" id="setGymName" placeholder="MuscleLab Gym">
+      </div>
+      <div class="form-group">
+        <label>Gym Phone (for WhatsApp messages)</label>
+        <input type="tel" id="setGymPhone" placeholder="e.g. 9876543210">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('settingsModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal modal-sm">
+    <div class="modal-body" style="padding:32px 24px">
+      <div class="confirm-icon" id="confirmIcon">🗑️</div>
+      <div class="confirm-title" id="confirmTitle">Confirm Delete</div>
+      <div class="confirm-text" id="confirmText">This action cannot be undone.</div>
+      <div style="display:flex;gap:12px;justify-content:center">
+        <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancel</button>
+        <button class="btn btn-danger" id="confirmOk">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOADER -->
+<div id="appLoader">
+  <div class="spinner"></div>
+  <div class="loader-text">Loading data…</div>
+</div>
+
+<!-- TOAST -->
+<div id="toastContainer"></div>
+
+<!-- ══════════════════ SCRIPT ══════════════════ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getFirestore, collection, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+
+// ─────────────────────────────────────────────────────────────────
+//  FIREBASE
+// ─────────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyDMfeXV1S9g2v7rR05xDHKUnnyDVwTmQoI",
+  authDomain: "musclelab-gym.firebaseapp.com",
+  projectId: "musclelab-gym",
+  storageBucket: "musclelab-gym.firebasestorage.app",
+  messagingSenderId: "206968588318",
+  appId: "1:206968588318:web:5dd74a56deb28a2c85c60f"
+};
+const _app    = initializeApp(firebaseConfig);
+const _appAux = initializeApp(firebaseConfig, 'aux'); // secondary instance — create users without logging out admin
+const db      = getFirestore(_app);
+const auth    = getAuth(_app);
+const authAux = getAuth(_appAux);
+
+// ─────────────────────────────────────────────────────────────────
+//  FIRESTORE HELPERS
+// ─────────────────────────────────────────────────────────────────
+async function fsSet(coll, id, data) {
+  const { id: _id, ...rest } = data;
+  await setDoc(doc(db, coll, id), rest);
+}
+async function fsUpdate(coll, id, changes) {
+  const { id: _id, ...rest } = changes;
+  await updateDoc(doc(db, coll, id), rest);
+}
+async function fsDelete(coll, id) {
+  await deleteDoc(doc(db, coll, id));
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  LOADER
+// ─────────────────────────────────────────────────────────────────
+function showLoader(show) {
+  const el = document.getElementById('appLoader');
+  if (el) el.style.display = show ? 'flex' : 'none';
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────────────────────────
+let currentUser     = null;
+let currentUserRole = null;
+let currentUserName = 'User';
+
+const S = {
+  members: [], plans: [], payments: [], enquiries: [], staff: [],
+  editMemberId: null, editPlanId: null, editEnqId: null, editStaffId: null,
+  charts: {}
+};
+
+// ─────────────────────────────────────────────────────────────────
+//  STORAGE — Firestore
+// ─────────────────────────────────────────────────────────────────
+async function load() {
+  showLoader(true);
+  try {
+    const [mSnap, plSnap, pySnap, eSnap, stSnap] = await Promise.all([
+      getDocs(collection(db, 'members')),
+      getDocs(collection(db, 'plans')),
+      getDocs(collection(db, 'payments')),
+      getDocs(collection(db, 'enquiries')),
+      getDocs(collection(db, 'staff')),
+    ]);
+    S.members   = mSnap.docs.map(d  => ({ ...d.data(), id: d.id }));
+    S.plans     = plSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+    S.payments  = pySnap.docs.map(d => ({ ...d.data(), id: d.id }));
+    S.enquiries = eSnap.docs.map(d  => ({ ...d.data(), id: d.id }));
+    S.staff     = stSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+  } catch(e) {
+    toast('Failed to load data: ' + e.message, 'error');
+  } finally {
+    showLoader(false);
+  }
+}
+
+async function initDefaults() {
+  if (S.plans.length === 0) {
+    const defaults = [
+      { id: uid('plan'), name: 'Monthly',     days: 30,  price: 1000, desc: 'Full access for 1 month' },
+      { id: uid('plan'), name: 'Quarterly',   days: 90,  price: 2500, desc: 'Full access for 3 months' },
+      { id: uid('plan'), name: 'Half Yearly', days: 180, price: 4500, desc: 'Full access for 6 months' },
+      { id: uid('plan'), name: 'Annual',      days: 365, price: 8000, desc: 'Full access for 1 year' },
+    ];
+    S.plans = defaults;
+    try {
+      await Promise.all(defaults.map(p => fsSet('plans', p.id, p)));
+    } catch(e) {
+      toast('Error saving default plans: ' + e.message, 'error');
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  UTILITIES
+// ─────────────────────────────────────────────────────────────────
+function uid(pfx) { return pfx + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+}
+
+function pad2(n) { return String(n).padStart(2,'0'); }
+
+function addDays(dateStr, n) {
+  const p = dateStr.split('-').map(Number);
+  const d = new Date(p[0], p[1]-1, p[2] + n);
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+}
+
+function fmtDate(s) {
+  if (!s) return '—';
+  const [y,m,d] = s.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function fmtMoney(n) { return '₹' + Number(n||0).toLocaleString('en-IN'); }
+
+function getMemberStatus(expiryDate) {
+  if (!expiryDate) return 'Expired';
+  const today = todayStr();
+  if (expiryDate < today) return 'Expired';
+  const diff = Math.ceil((new Date(expiryDate) - new Date(today)) / 86400000);
+  return diff <= 7 ? 'Expiring' : 'Active';
+}
+
+function statusBadge(st) {
+  const m = { Active:'badge-green', Expiring:'badge-orange', Expired:'badge-red' };
+  return `<span class="badge ${m[st]||'badge-gray'}">${st==='Expiring'?'Expiring Soon':st}</span>`;
+}
+
+function enqBadge(st) {
+  const m = { New:'badge-blue', Contacted:'badge-gray', Interested:'badge-purple', Converted:'badge-green', Lost:'badge-red' };
+  return `<span class="badge ${m[st]||'badge-gray'}">${st}</span>`;
+}
+
+function nextMemberId() {
+  const nums = S.members.map(m => parseInt(m.id.replace('ML','')) || 0);
+  return 'ML' + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(3,'0');
+}
+
+function nextReceiptNo() {
+  const nums = S.payments.map(p => parseInt((p.receiptNo||'').replace('RCP','')) || 0);
+  return 'RCP' + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(4,'0');
+}
+
+function getPlan(id) { return S.plans.find(p => p.id === id); }
+function getMember(id) { return S.members.find(m => m.id === id); }
+
+function resizeImg(file, cb) {
+  const r = new FileReader();
+  r.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height, max = 200;
+      if (w > max) { h = h*max/w; w = max; }
+      if (h > max) { w = w*max/h; h = max; }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      cb(c.toDataURL('image/jpeg',0.72));
+    };
+    img.src = e.target.result;
+  };
+  r.readAsDataURL(file);
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  TOAST
+// ─────────────────────────────────────────────────────────────────
+function toast(msg, type='success') {
+  const icons = { success:'✅', error:'❌', info:'ℹ️', warning:'⚠️' };
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `<span>${icons[type]||'•'}</span><span>${msg}</span>`;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => { el.style.animation = 'toastOut 0.3s ease forwards'; setTimeout(()=>el.remove(),300); }, 3200);
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  CONFIRM
+// ─────────────────────────────────────────────────────────────────
+let _confirmCb = null;
+function confirm2(title, text, cb, icon='🗑️') {
+  document.getElementById('confirmIcon').textContent = icon;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmText').textContent = text;
+  _confirmCb = cb;
+  openModal('confirmModal');
+  document.getElementById('confirmOk').onclick = () => { closeModal('confirmModal'); _confirmCb && _confirmCb(); };
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  MODALS
+// ─────────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) closeModal(o.id); });
+});
+
+// ─────────────────────────────────────────────────────────────────
+//  AUTH
+// ─────────────────────────────────────────────────────────────────
+async function fetchUserRole(uid) {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', uid));
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      currentUserRole = data.role || 'trainer';
+      currentUserName = data.name || currentUser?.email || 'User';
+    } else {
+      currentUserRole = 'trainer';
+      currentUserName = currentUser?.email || 'User';
+    }
+  } catch(e) {
+    currentUserRole = 'trainer';
+    currentUserName = 'User';
+  }
+}
+
+function applyRolePermissions() {
+  const role = currentUserRole || 'trainer';
+  const hu = document.getElementById('headerUserName');
+  if (hu) hu.textContent = `👤 ${currentUserName}`;
+  const wt = document.querySelector('#dashboardPage .section-title');
+  if (wt) wt.textContent = `Welcome back, ${currentUserName}! 👋`;
+  document.querySelectorAll('[data-requires-role]').forEach(el => {
+    const allowed = (el.dataset.requiresRole || '').split(' ').filter(Boolean);
+    el.style.display = allowed.includes(role) ? '' : 'none';
+  });
+}
+
+function showLoginPage() {
+  document.getElementById('setupPage').style.display   = 'none';
+  document.getElementById('appContainer').style.display = 'none';
+  document.getElementById('loginPage').style.display   = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  const errEl = document.getElementById('loginError');
+  if (errEl) errEl.style.display = 'none';
+}
+
+function showSetupPage() {
+  document.getElementById('loginPage').style.display   = 'none';
+  document.getElementById('appContainer').style.display = 'none';
+  document.getElementById('setupPage').style.display   = 'flex';
+}
+
+async function checkFirstRun() {
+  const snap = await getDocs(collection(db, 'users'));
+  return snap.empty;
+}
+
+async function setupAdmin(e) {
+  e.preventDefault();
+  const name  = document.getElementById('setupName').value.trim();
+  const email = document.getElementById('setupEmail').value.trim();
+  const pass  = document.getElementById('setupPass').value;
+  const errEl = document.getElementById('setupError');
+  errEl.style.display = 'none';
+  showLoader(true);
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await setDoc(doc(db, 'users', cred.user.uid), { uid: cred.user.uid, name, email, role: 'admin' });
+    toast('Admin account created! Please log in.', 'success');
+    await signOut(auth);
+    showLoginPage();
+  } catch(err) {
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  } finally {
+    showLoader(false);
+  }
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('loginUser').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+  if (!email || !pass) {
+    errEl.textContent = '❌ Please enter email and password';
+    errEl.style.display = 'block';
+    return;
+  }
+  showLoader(true);
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    // onAuthStateChanged handles the rest
+  } catch(err) {
+    errEl.textContent = '❌ Invalid email or password';
+    errEl.style.display = 'block';
+    showLoader(false);
+  }
+}
+
+function doLogout() {
+  confirm2('Logout', 'Are you sure you want to logout?', async () => {
+    showLoader(true);
+    try { await signOut(auth); } catch(e) { toast('Logout error: ' + e.message, 'error'); showLoader(false); }
+  }, '🚪');
+}
+
+function showApp() {
+  document.getElementById('loginPage').style.display   = 'none';
+  document.getElementById('setupPage').style.display   = 'none';
+  document.getElementById('appContainer').style.display = 'flex';
+  applyRolePermissions();
+  navigate('dashboard');
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  NAVIGATION
+// ─────────────────────────────────────────────────────────────────
+const PAGE_TITLES = { dashboard:'Dashboard', members:'Members', plans:'Plans', payments:'Payments', enquiries:'Enquiries', staff:'Staff', analytics:'Analytics', settings:'Settings' };
+
+const RESTRICTED_PAGES = {
+  members:   ['admin','receptionist'],
+  plans:     ['admin','receptionist'],
+  payments:  ['admin','receptionist'],
+  staff:     ['admin'],
+  analytics: ['admin'],
+  settings:  ['admin'],
+};
+
+function navigate(page) {
+  if (currentUserRole && RESTRICTED_PAGES[page] && !RESTRICTED_PAGES[page].includes(currentUserRole)) {
+    toast('Access denied', 'warning');
+    return;
+  }
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item[data-page]').forEach(n => n.classList.remove('active'));
+  const pg = document.getElementById(page+'Page');
+  if (pg) pg.classList.add('active');
+  const nv = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (nv) nv.classList.add('active');
+  document.getElementById('headerTitle').textContent = PAGE_TITLES[page] || page;
+  closeSidebar();
+  renderPage(page);
+}
+
+function renderPage(page) {
+  const map = { dashboard:renderDashboard, members:renderMembers, plans:renderPlans, payments:renderPayments, enquiries:renderEnquiries, staff:renderStaff, analytics:renderAnalytics, settings:renderSettings };
+  if (map[page]) map[page]();
+}
+
+function toggleSidebar() {
+  const s = document.getElementById('sidebar');
+  const o = document.getElementById('sidebarOverlay');
+  if (s.classList.contains('open')) { s.classList.remove('open'); o.classList.remove('show'); }
+  else { s.classList.add('open'); o.classList.add('show'); }
+}
+function closeSidebar() {
+  if (window.innerWidth < 768) {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('show');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  PHOTO PREVIEW
+// ─────────────────────────────────────────────────────────────────
+function previewPhoto(input, previewId) {
+  if (input.files && input.files[0]) {
+    resizeImg(input.files[0], data => {
+      input.dataset.img = data;
+      document.getElementById(previewId).innerHTML = `<img src="${data}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--primary);margin-top:4px">`;
+    });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  DASHBOARD — real-time via onSnapshot
+// ─────────────────────────────────────────────────────────────────
+let _dashUnsubs = [];
+function setupDashboardListeners() {
+  _dashUnsubs.forEach(u => u());
+  _dashUnsubs = [];
+  const refresh = () => {
+    if (document.getElementById('dashboardPage').classList.contains('active')) renderDashboard();
+  };
+  _dashUnsubs.push(
+    onSnapshot(collection(db,'members'),   snap => { S.members   = snap.docs.map(d => ({...d.data(),id:d.id})); refresh(); }),
+    onSnapshot(collection(db,'payments'),  snap => { S.payments  = snap.docs.map(d => ({...d.data(),id:d.id})); refresh(); }),
+    onSnapshot(collection(db,'enquiries'), snap => { S.enquiries = snap.docs.map(d => ({...d.data(),id:d.id})); refresh(); })
+  );
+}
+
+function renderDashboard() {
+  const d = new Date();
+  const el = document.getElementById('dashDate');
+  if (el) el.textContent = d.toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  let active=0, expiring=0, expired=0;
+  const expiringList = [];
+  S.members.forEach(m => {
+    const st = getMemberStatus(m.expiryDate);
+    if (st === 'Active') active++;
+    else if (st === 'Expiring') { expiring++; expiringList.push(m); }
+    else expired++;
+  });
+
+  const thisMonth = `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+  const monthRev = S.payments.filter(p => p.date && p.date.startsWith(thisMonth)).reduce((s,p)=>s+Number(p.amount||0),0);
+  const newEnq = S.enquiries.filter(e => e.status === 'New').length;
+
+  const stats = [
+    { icon:'👥', val: S.members.length,        label:'Total Members',       cls:'' },
+    { icon:'💪', val: active + expiring,         label:'Active Members',      cls:'green' },
+    { icon:'💰', val: fmtMoney(monthRev),        label:'Revenue This Month',  cls:'blue' },
+    { icon:'⏳', val: expiring,                  label:'Expiring This Week',  cls:'orange' },
+    { icon:'⚠️', val: expired,                  label:'Pending Dues',        cls:'orange' },
+    { icon:'📋', val: newEnq,                    label:'New Enquiries',       cls:'purple' },
+  ];
+
+  document.getElementById('statsGrid').innerHTML = stats.map(s =>
+    `<div class="stat-card ${s.cls}"><span class="stat-icon">${s.icon}</span><div class="stat-number ${s.cls}">${s.val}</div><div class="stat-label">${s.label}</div></div>`
+  ).join('');
+
+  // Recent Members
+  const rm = [...S.members].reverse().slice(0,5);
+  document.getElementById('dashRecentMembers').innerHTML = rm.length === 0
+    ? `<div class="empty-state" style="padding:28px"><div class="empty-icon">👥</div><div>No members yet</div></div>`
+    : `<table><thead><tr><th>Name</th><th>Phone</th><th>Plan</th><th>Status</th></tr></thead><tbody>${rm.map(m=>{
+        const st = getMemberStatus(m.expiryDate);
+        return `<tr><td><strong>${m.name}</strong></td><td class="td-muted">${m.phone}</td><td class="td-muted">${m.planName||'—'}</td><td>${statusBadge(st)}</td></tr>`;
+      }).join('')}</tbody></table>`;
+
+  // Recent Payments
+  const rp = [...S.payments].reverse().slice(0,5);
+  document.getElementById('dashRecentPayments').innerHTML = rp.length === 0
+    ? `<div class="empty-state" style="padding:28px"><div class="empty-icon">💰</div><div>No payments yet</div></div>`
+    : `<table><thead><tr><th>Member</th><th>Amount</th><th>Mode</th><th>Date</th></tr></thead><tbody>${rp.map(p=>
+        `<tr><td><strong>${p.memberName}</strong></td><td style="color:var(--success);font-weight:700">${fmtMoney(p.amount)}</td><td class="td-muted">${p.mode}</td><td class="td-muted">${fmtDate(p.date)}</td></tr>`
+      ).join('')}</tbody></table>`;
+
+  // Expiring list
+  document.getElementById('expiringBadge').textContent = expiringList.length;
+  document.getElementById('expiringList').innerHTML = expiringList.length === 0
+    ? `<div style="color:var(--text2);font-size:13px;text-align:center;padding:18px">✅ No memberships expiring this week</div>`
+    : expiringList.map(m =>
+        `<div class="expiry-item">
+          <div>
+            <div style="font-weight:600;font-size:13px">${m.name}</div>
+            <div style="color:var(--text2);font-size:11px">${m.phone} · ${m.planName||'—'}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:12px;color:var(--warning)">${fmtDate(m.expiryDate)}</div>
+            <button class="btn btn-whatsapp btn-sm" onclick="sendWA_expiry('${m.id}')" style="margin-top:4px;padding:3px 8px;font-size:11px">💬 WA</button>
+          </div>
+        </div>`
+      ).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  MEMBERS
+// ─────────────────────────────────────────────────────────────────
+function renderMembers() {
+  const q = (document.getElementById('memberSearch')?.value||'').toLowerCase();
+  const f = document.getElementById('memberFilter')?.value||'all';
+
+  const list = S.members.filter(m => {
+    const st = getMemberStatus(m.expiryDate);
+    const matchQ = !q || m.name.toLowerCase().includes(q) || m.phone.includes(q);
+    const matchF = f==='all' || st===f || (f==='Expiring' && st==='Expiring');
+    return matchQ && matchF;
+  });
+
+  const wrap = document.getElementById('membersTable');
+  if (!list.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No Members Found</div><div class="empty-text">Add your first member to get started</div><button class="btn btn-primary" onclick="openMemberModal()">➕ Add Member</button></div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>ID</th><th>Photo</th><th>Name</th><th>Phone</th><th>Plan</th><th>Start Date</th><th>Expiry Date</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${list.map(m => {
+        const st = getMemberStatus(m.expiryDate);
+        return `<tr>
+          <td><span style="font-size:12px;color:var(--text2)">${m.id}</span></td>
+          <td><div class="member-thumb">${m.photo?`<img src="${m.photo}" alt="">`:'👤'}</div></td>
+          <td><strong>${m.name}</strong></td>
+          <td class="td-muted">${m.phone}</td>
+          <td class="td-muted">${m.planName||'—'}</td>
+          <td class="td-muted">${fmtDate(m.joinDate)}</td>
+          <td class="td-muted">${fmtDate(m.expiryDate)}</td>
+          <td>${statusBadge(st)}</td>
+          <td><div class="actions-group">
+            <button class="btn btn-icon btn-sm" title="View" onclick="openProfile('${m.id}')">👁️</button>
+            ${['admin','receptionist'].includes(currentUserRole) ? `<button class="btn btn-icon btn-sm" title="Edit" onclick="openMemberModal('${m.id}')">✏️</button>` : ''}
+            ${['admin','receptionist'].includes(currentUserRole) ? `<button class="btn btn-icon btn-sm" title="Delete" onclick="deleteMember('${m.id}')" style="color:var(--danger)">🗑️</button>` : ''}
+            <button class="btn btn-whatsapp btn-sm" title="WhatsApp" onclick="sendWA_expiry('${m.id}')">💬</button>
+          </div></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+}
+
+function openMemberModal(memberId) {
+  S.editMemberId = memberId || null;
+  const isEdit = !!memberId;
+  document.getElementById('memberModalTitle').textContent = isEdit ? 'Edit Member' : 'Add New Member';
+
+  // Populate plan dropdown
+  document.getElementById('mPlan').innerHTML = '<option value="">Select a plan</option>' +
+    S.plans.map(p => `<option value="${p.id}">${p.name} — ${fmtMoney(p.price)}</option>`).join('');
+
+  // Reset photo
+  const photo = document.getElementById('mPhoto');
+  photo.value = '';
+  delete photo.dataset.img;
+
+  if (isEdit) {
+    const m = getMember(memberId);
+    if (!m) return;
+    document.getElementById('mId').value = m.id;
+    document.getElementById('mName').value = m.name;
+    document.getElementById('mPhone').value = m.phone;
+    document.getElementById('mEmail').value = m.email||'';
+    document.getElementById('mDob').value = m.dob||'';
+    document.getElementById('mGender').value = m.gender||'';
+    document.getElementById('mAddress').value = m.address||'';
+    document.getElementById('mEmergency').value = m.emergency||'';
+    document.getElementById('mJoinDate').value = m.joinDate||todayStr();
+    document.getElementById('mPlan').value = m.planId||'';
+    document.getElementById('mPayAmtWrap').style.display = 'none';
+    document.getElementById('mPayModeWrap').style.display = 'none';
+    document.getElementById('mPhotoPreview').innerHTML = m.photo
+      ? `<img src="${m.photo}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--border)">` : '';
+  } else {
+    document.getElementById('mId').value = nextMemberId();
+    ['mName','mPhone','mEmail','mAddress','mEmergency'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('mDob').value = '';
+    document.getElementById('mGender').value = '';
+    document.getElementById('mJoinDate').value = todayStr();
+    document.getElementById('mPlan').value = '';
+    document.getElementById('mPayAmt').value = '';
+    document.getElementById('mPayMode').value = 'Cash';
+    document.getElementById('mPayAmtWrap').style.display = '';
+    document.getElementById('mPayModeWrap').style.display = '';
+    document.getElementById('mPhotoPreview').innerHTML = '';
+  }
+  openModal('memberModal');
+}
+
+function onMemberPlanChange() {
+  const plan = getPlan(document.getElementById('mPlan').value);
+  if (plan && !S.editMemberId) document.getElementById('mPayAmt').value = plan.price;
+}
+
+async function saveMember() {
+  const name     = document.getElementById('mName').value.trim();
+  const phone    = document.getElementById('mPhone').value.trim();
+  const joinDate = document.getElementById('mJoinDate').value;
+  const planId   = document.getElementById('mPlan').value;
+  const isEdit   = !!S.editMemberId;
+
+  if (!name)    { toast('Please enter member name','error'); return; }
+  if (!phone)   { toast('Please enter phone number','error'); return; }
+  if (!planId)  { toast('Please select a plan','error'); return; }
+  if (!joinDate){ toast('Please select join date','error'); return; }
+  if (!isEdit && !document.getElementById('mPayAmt').value) { toast('Please enter payment amount','error'); return; }
+
+  const plan = getPlan(planId);
+  const expiryDate = plan ? addDays(joinDate, plan.days) : joinDate;
+  const photoInput = document.getElementById('mPhoto');
+  const newPhoto = photoInput.dataset.img || null;
+
+  showLoader(true);
+  try {
+    if (isEdit) {
+      const updates = {
+        name, phone,
+        email: document.getElementById('mEmail').value.trim(),
+        dob: document.getElementById('mDob').value,
+        gender: document.getElementById('mGender').value,
+        address: document.getElementById('mAddress').value.trim(),
+        emergency: document.getElementById('mEmergency').value.trim(),
+        joinDate, planId, planName: plan ? plan.name : '', expiryDate,
+      };
+      if (newPhoto) updates.photo = newPhoto;
+      const idx = S.members.findIndex(m => m.id === S.editMemberId);
+      if (idx !== -1) S.members[idx] = { ...S.members[idx], ...updates };
+      await fsUpdate('members', S.editMemberId, updates);
+      toast('Member updated!', 'success');
+    } else {
+      const id = document.getElementById('mId').value || nextMemberId();
+      const member = {
+        id, name, phone,
+        email: document.getElementById('mEmail').value.trim(),
+        dob: document.getElementById('mDob').value,
+        gender: document.getElementById('mGender').value,
+        address: document.getElementById('mAddress').value.trim(),
+        emergency: document.getElementById('mEmergency').value.trim(),
+        joinDate, planId, planName: plan ? plan.name : '',
+        expiryDate, photo: newPhoto || '', createdAt: todayStr(),
+      };
+      S.members.push(member);
+      await fsSet('members', id, member);
+      // Auto-record initial payment
+      const amt = parseFloat(document.getElementById('mPayAmt').value || 0);
+      const mode = document.getElementById('mPayMode').value;
+      if (amt > 0) {
+        const payment = {
+          id: uid('pay'), receiptNo: nextReceiptNo(),
+          memberId: id, memberName: name,
+          amount: amt, mode, planId, planName: plan ? plan.name : '',
+          date: joinDate, expiryDate, note: 'Initial registration',
+        };
+        S.payments.push(payment);
+        await fsSet('payments', payment.id, payment);
+      }
+      toast(`Member ${id} added!`, 'success');
+    }
+  } catch(e) {
+    toast('Error saving member: ' + e.message, 'error');
+  } finally {
+    showLoader(false);
+  }
+  S.editMemberId = null;
+  closeModal('memberModal');
+  renderMembers();
+}
+
+function deleteMember(id) {
+  const m = getMember(id);
+  if (!m) return;
+  confirm2('Delete Member', `Remove ${m.name}? Payment records will remain.`, async () => {
+    showLoader(true);
+    try {
+      await fsDelete('members', id);
+      S.members = S.members.filter(x => x.id !== id);
+      toast('Member deleted', 'success');
+      renderMembers();
+    } catch(e) {
+      toast('Error deleting member: ' + e.message, 'error');
+    } finally {
+      showLoader(false);
+    }
+  });
+}
+
+function openProfile(memberId) {
+  const m = getMember(memberId);
+  if (!m) return;
+  const st = getMemberStatus(m.expiryDate);
+  const pays = S.payments.filter(p => p.memberId === memberId);
+  document.getElementById('profileBody').innerHTML = `
+    <div class="profile-hdr">
+      <div class="profile-avatar">${m.photo?`<img src="${m.photo}" alt="">`: '👤'}</div>
+      <div style="flex:1">
+        <div class="profile-name">${m.name}</div>
+        <div class="profile-id">${m.id}</div>
+        <div>${statusBadge(st)}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-whatsapp btn-sm" onclick="sendWA_expiry('${m.id}')">💬 WhatsApp</button>
+        <button class="btn btn-primary btn-sm" onclick="closeModal('profileModal');openRenewalModal('${m.id}')">🔄 Renew</button>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('profileModal');openMemberModal('${m.id}')">✏️ Edit</button>
+      </div>
+    </div>
+    <div class="profile-details">
+      <div class="detail-item"><label>Phone</label><span>${m.phone}</span></div>
+      <div class="detail-item"><label>Email</label><span>${m.email||'—'}</span></div>
+      <div class="detail-item"><label>Date of Birth</label><span>${fmtDate(m.dob)}</span></div>
+      <div class="detail-item"><label>Gender</label><span>${m.gender||'—'}</span></div>
+      <div class="detail-item"><label>Address</label><span>${m.address||'—'}</span></div>
+      <div class="detail-item"><label>Emergency Contact</label><span>${m.emergency||'—'}</span></div>
+      <div class="detail-item"><label>Plan</label><span>${m.planName||'—'}</span></div>
+      <div class="detail-item"><label>Join Date</label><span>${fmtDate(m.joinDate)}</span></div>
+      <div class="detail-item"><label>Expiry Date</label><span style="${st==='Expired'?'color:var(--danger)':st==='Expiring'?'color:var(--warning)':''}">${fmtDate(m.expiryDate)}</span></div>
+      <div class="detail-item"><label>Member Since</label><span>${fmtDate(m.createdAt)}</span></div>
+    </div>
+    <div class="section-header" style="margin-bottom:12px">
+      <div class="section-title">Payment History</div>
+      <span class="badge badge-blue">${pays.length} records</span>
+    </div>
+    ${pays.length === 0
+      ? `<div style="color:var(--text2);font-size:13px;padding:12px 0">No payment records found.</div>`
+      : `<div class="table-wrapper"><table>
+          <thead><tr><th>Receipt No</th><th>Date</th><th>Plan</th><th>Amount</th><th>Mode</th><th>Note</th></tr></thead>
+          <tbody>${[...pays].reverse().map(p =>
+            `<tr>
+              <td><span style="font-family:monospace;font-size:12px;color:var(--text2)">${p.receiptNo}</span></td>
+              <td class="td-muted">${fmtDate(p.date)}</td>
+              <td class="td-muted">${p.planName||'—'}</td>
+              <td style="color:var(--success);font-weight:700">${fmtMoney(p.amount)}</td>
+              <td class="td-muted">${p.mode}</td>
+              <td class="td-muted">${p.note||'—'}</td>
+            </tr>`
+          ).join('')}</tbody>
+        </table></div>`
+    }`;
+  openModal('profileModal');
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  PLANS
+// ─────────────────────────────────────────────────────────────────
+function renderPlans() {
+  const grid = document.getElementById('plansGrid');
+  if (!S.plans.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">💳</div><div class="empty-title">No Plans</div><button class="btn btn-primary" onclick="openPlanModal()">➕ Add Plan</button></div>`;
+    return;
+  }
+  grid.innerHTML = S.plans.map(p => {
+    const cnt = S.members.filter(m => m.planId === p.id).length;
+    return `
+      <div class="plan-card">
+        <div class="plan-badge">${p.days}d</div>
+        <div class="plan-name">${p.name}</div>
+        <div class="plan-duration">${p.days} days duration</div>
+        <div class="plan-price">${fmtMoney(p.price)}</div>
+        <div class="plan-price-label">per membership</div>
+        ${p.desc?`<div class="plan-desc">${p.desc}</div>`:''}
+        <div class="plan-members">👥 ${cnt} member${cnt!==1?'s':''} on this plan</div>
+        <div class="plan-actions">
+          ${currentUserRole === 'admin' ? `<button class="btn btn-secondary btn-sm" onclick="openPlanModal('${p.id}')">✏️ Edit</button>` : ''}
+          ${currentUserRole === 'admin' ? `<button class="btn btn-danger btn-sm" onclick="deletePlan('${p.id}')">🗑️ Delete</button>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function openPlanModal(planId) {
+  S.editPlanId = planId || null;
+  document.getElementById('planModalTitle').textContent = planId ? 'Edit Plan' : 'Add New Plan';
+  if (planId) {
+    const p = getPlan(planId);
+    if (!p) return;
+    document.getElementById('pName').value = p.name;
+    document.getElementById('pDays').value = p.days;
+    document.getElementById('pPrice').value = p.price;
+    document.getElementById('pDesc').value = p.desc||'';
+  } else {
+    document.getElementById('pName').value = '';
+    document.getElementById('pDays').value = '';
+    document.getElementById('pPrice').value = '';
+    document.getElementById('pDesc').value = '';
+  }
+  openModal('planModal');
+}
+
+async function savePlan() {
+  const name  = document.getElementById('pName').value.trim();
+  const days  = parseInt(document.getElementById('pDays').value);
+  const price = parseFloat(document.getElementById('pPrice').value);
+  if (!name)           { toast('Enter plan name','error'); return; }
+  if (!days || days<1) { toast('Enter valid duration','error'); return; }
+  if (isNaN(price) || price<0) { toast('Enter valid price','error'); return; }
+
+  const data = { name, days, price, desc: document.getElementById('pDesc').value.trim() };
+  showLoader(true);
+  try {
+    if (S.editPlanId) {
+      const idx = S.plans.findIndex(p => p.id === S.editPlanId);
+      if (idx!==-1) S.plans[idx] = { ...S.plans[idx], ...data };
+      await fsUpdate('plans', S.editPlanId, data);
+      toast('Plan updated!', 'success');
+    } else {
+      const id = uid('plan');
+      S.plans.push({ id, ...data });
+      await fsSet('plans', id, { id, ...data });
+      toast('Plan added!', 'success');
+    }
+  } catch(e) {
+    toast('Error saving plan: ' + e.message, 'error');
+  } finally {
+    showLoader(false);
+  }
+  S.editPlanId = null;
+  closeModal('planModal');
+  renderPlans();
+}
+
+function deletePlan(planId) {
+  const p = getPlan(planId);
+  if (!p) return;
+  const cnt = S.members.filter(m => m.planId===planId).length;
+  confirm2('Delete Plan', `Delete "${p.name}"?${cnt>0?` ${cnt} member(s) use this plan.`:''}`, async () => {
+    showLoader(true);
+    try {
+      await fsDelete('plans', planId);
+      S.plans = S.plans.filter(x => x.id !== planId);
+      toast('Plan deleted', 'success');
+      renderPlans();
+    } catch(e) {
+      toast('Error deleting plan: ' + e.message, 'error');
+    } finally {
+      showLoader(false);
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  PAYMENTS
+// ─────────────────────────────────────────────────────────────────
+function renderPayments() {
+  const q    = (document.getElementById('paySearch')?.value||'').toLowerCase();
+  const mode = document.getElementById('payModeFilter')?.value||'all';
+  const from = document.getElementById('payFrom')?.value||'';
+  const to   = document.getElementById('payTo')?.value||'';
+
+  const list = [...S.payments].reverse().filter(p => {
+    const matchQ = !q || p.memberName.toLowerCase().includes(q);
+    const matchM = mode==='all' || p.mode===mode;
+    const matchF = !from || p.date>=from;
+    const matchT = !to   || p.date<=to;
+    return matchQ && matchM && matchF && matchT;
+  });
+
+  // Daily summary
+  const today = todayStr();
+  const todayPays = S.payments.filter(p => p.date===today);
+  const dTotal = todayPays.reduce((s,p)=>s+Number(p.amount||0),0);
+  const dCash  = todayPays.filter(p=>p.mode==='Cash').reduce((s,p)=>s+Number(p.amount||0),0);
+  const dUPI   = todayPays.filter(p=>p.mode==='UPI').reduce((s,p)=>s+Number(p.amount||0),0);
+  const dCard  = todayPays.filter(p=>p.mode==='Card').reduce((s,p)=>s+Number(p.amount||0),0);
+
+  document.getElementById('dailySummary').innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:1px;white-space:nowrap">TODAY'S COLLECTION</div>
+    <div class="daily-summary-item"><div class="daily-summary-num">${fmtMoney(dTotal)}</div><div class="daily-summary-label">Total</div></div>
+    <div class="daily-summary-item"><div class="daily-summary-num">${fmtMoney(dCash)}</div><div class="daily-summary-label">Cash</div></div>
+    <div class="daily-summary-item"><div class="daily-summary-num">${fmtMoney(dUPI)}</div><div class="daily-summary-label">UPI</div></div>
+    <div class="daily-summary-item"><div class="daily-summary-num">${fmtMoney(dCard)}</div><div class="daily-summary-label">Card</div></div>
+    <div class="daily-summary-item"><div class="daily-summary-num">${todayPays.length}</div><div class="daily-summary-label">Transactions</div></div>`;
+
+  const wrap = document.getElementById('paymentsTable');
+  if (!list.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">💰</div><div class="empty-title">No Payments Found</div><button class="btn btn-primary" onclick="openPaymentModal()">➕ Record Payment</button></div>`;
+    return;
+  }
+
+  const modeBadge = m => {
+    const mp = { Cash:'badge-green', UPI:'badge-blue', Card:'badge-purple' };
+    return `<span class="badge ${mp[m]||'badge-gray'}">${m}</span>`;
+  };
+
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Receipt No</th><th>Date</th><th>Member</th><th>Amount</th><th>Mode</th><th>Plan</th><th>Note</th><th>Actions</th></tr></thead>
+      <tbody>${list.map(p=>`<tr>
+        <td><span style="font-family:monospace;font-size:12px;color:var(--text2)">${p.receiptNo}</span></td>
+        <td class="td-muted">${fmtDate(p.date)}</td>
+        <td><strong>${p.memberName}</strong></td>
+        <td style="color:var(--success);font-weight:700">${fmtMoney(p.amount)}</td>
+        <td>${modeBadge(p.mode)}</td>
+        <td class="td-muted">${p.planName||'—'}</td>
+        <td class="td-muted" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.note||'—'}</td>
+        <td><div class="actions-group">
+          <button class="btn btn-whatsapp btn-sm" title="Send Receipt via WhatsApp" onclick="sendWA_receipt('${p.id}')">💬</button>
+          ${currentUserRole === 'admin' ? `<button class="btn btn-icon btn-sm" title="Delete" onclick="deletePayment('${p.id}')" style="color:var(--danger)">🗑️</button>` : ''}
+        </div></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+function openPaymentModal(prefillMemberId) {
+  document.getElementById('payMember').innerHTML = '<option value="">Select member</option>' +
+    S.members.map(m=>`<option value="${m.id}">${m.name} (${m.id})</option>`).join('');
+  document.getElementById('payPlan').innerHTML = '<option value="">Select plan</option>' +
+    S.plans.map(p=>`<option value="${p.id}">${p.name} — ${fmtMoney(p.price)}</option>`).join('');
+  document.getElementById('payAmt').value = '';
+  document.getElementById('payMode').value = 'Cash';
+  document.getElementById('payDate').value = todayStr();
+  document.getElementById('payNote').value = '';
+  if (prefillMemberId) {
+    document.getElementById('payMember').value = prefillMemberId;
+    onPayMemberChange();
+  }
+  openModal('paymentModal');
+}
+
+function openRenewalModal(memberId) { openPaymentModal(memberId); }
+
+function onPayMemberChange() {
+  const m = getMember(document.getElementById('payMember').value);
+  if (m && m.planId) { document.getElementById('payPlan').value = m.planId; onPayPlanChange(); }
+}
+
+function onPayPlanChange() {
+  const plan = getPlan(document.getElementById('payPlan').value);
+  if (plan) document.getElementById('payAmt').value = plan.price;
+}
+
+async function savePayment() {
+  const memberId = document.getElementById('payMember').value;
+  const planId   = document.getElementById('payPlan').value;
+  const amt      = parseFloat(document.getElementById('payAmt').value);
+  const date     = document.getElementById('payDate').value;
+
+  if (!memberId)      { toast('Select a member','error'); return; }
+  if (!amt || amt<=0) { toast('Enter valid amount','error'); return; }
+  if (!date)          { toast('Select payment date','error'); return; }
+
+  const member = getMember(memberId);
+  const plan   = planId ? getPlan(planId) : null;
+  const expiryDate = plan ? addDays(date, plan.days) : '';
+
+  const payment = {
+    id: uid('pay'), receiptNo: nextReceiptNo(),
+    memberId, memberName: member ? member.name : '',
+    amount: amt, mode: document.getElementById('payMode').value,
+    planId: planId||'', planName: plan ? plan.name : '',
+    date, expiryDate, note: document.getElementById('payNote').value.trim(),
+  };
+  showLoader(true);
+  try {
+    S.payments.push(payment);
+    await fsSet('payments', payment.id, payment);
+    // Update member plan/expiry
+    if (member && plan) {
+      const idx = S.members.findIndex(m => m.id === memberId);
+      if (idx!==-1) {
+        S.members[idx].planId = planId;
+        S.members[idx].planName = plan.name;
+        S.members[idx].expiryDate = expiryDate;
+      }
+      await fsUpdate('members', memberId, { planId, planName: plan.name, expiryDate });
+    }
+    closeModal('paymentModal');
+    toast(`Payment ${payment.receiptNo} recorded!`, 'success');
+    renderPage('payments');
+  } catch(e) {
+    toast('Error saving payment: ' + e.message, 'error');
+  } finally {
+    showLoader(false);
+  }
+}
+
+function deletePayment(id) {
+  confirm2('Delete Payment', 'Remove this payment record?', async () => {
+    showLoader(true);
+    try {
+      await fsDelete('payments', id);
+      S.payments = S.payments.filter(p => p.id!==id);
+      toast('Payment deleted','success');
+      renderPayments();
+    } catch(e) {
+      toast('Error deleting payment: ' + e.message, 'error');
+    } finally {
+      showLoader(false);
+    }
+  });
+}
+
+function exportCSV() {
+  if (!S.payments.length) { toast('No payments to export','warning'); return; }
+  const header = ['Receipt No','Date','Member Name','Amount','Mode','Plan','Expiry Date','Note'];
+  const rows = S.payments.map(p => [
+    p.receiptNo, p.date, `"${p.memberName}"`, p.amount, p.mode,
+    `"${p.planName||''}"`, p.expiryDate||'', `"${p.note||''}"`
+  ]);
+  const csv = [header.join(','), ...rows.map(r=>r.join(','))].join('\n');
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})),
+    download: `musclelab_payments_${todayStr()}.csv`
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Payments exported!','success');
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  ENQUIRIES
+// ─────────────────────────────────────────────────────────────────
+function renderEnquiries() {
+  const q  = (document.getElementById('enqSearch')?.value||'').toLowerCase();
+  const sf = document.getElementById('enqStatusFilter')?.value||'all';
+  const today = todayStr();
+
+  const list = [...S.enquiries].reverse().filter(e => {
+    const matchQ = !q || e.name.toLowerCase().includes(q) || e.phone.includes(q);
+    const matchS = sf==='all' || e.status===sf;
+    return matchQ && matchS;
+  });
+
+  const wrap = document.getElementById('enquiriesTable');
+  if (!list.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No Enquiries Found</div><button class="btn btn-primary" onclick="openEnquiryModal()">➕ Add Enquiry</button></div>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Date</th><th>Name</th><th>Phone</th><th>Plan Interest</th><th>Source</th><th>Status</th><th>Follow Up</th><th>Actions</th></tr></thead>
+      <tbody>${list.map(e => {
+        const overdue = e.followUpDate && e.followUpDate < today && e.status!=='Converted' && e.status!=='Lost';
+        return `<tr>
+          <td class="td-muted">${fmtDate(e.date)}</td>
+          <td><strong>${e.name}</strong></td>
+          <td class="td-muted">${e.phone}</td>
+          <td class="td-muted">${e.interestedPlan||'—'}</td>
+          <td class="td-muted">${e.source}</td>
+          <td style="display:flex;align-items:center;gap:6px;padding-top:14px">
+            ${enqBadge(e.status)}
+            <select class="status-select" onchange="updateEnqStatus('${e.id}',this.value)">
+              ${['New','Contacted','Interested','Converted','Lost'].map(s=>`<option value="${s}" ${e.status===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+          </td>
+          <td class="${overdue?'overdue':'td-muted'}">${e.followUpDate?fmtDate(e.followUpDate):'—'}${overdue?' ⚠️':''}</td>
+          <td><div class="actions-group">
+            <button class="btn btn-icon btn-sm" title="Edit" onclick="openEnquiryModal('${e.id}')">✏️</button>
+            <button class="btn btn-whatsapp btn-sm" title="WhatsApp" onclick="sendWA_enquiry('${e.id}')">💬</button>
+            <button class="btn btn-icon btn-sm" title="Delete" onclick="deleteEnquiry('${e.id}')" style="color:var(--danger)">🗑️</button>
+          </div></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+}
+
+function openEnquiryModal(enqId) {
+  S.editEnqId = enqId || null;
+  document.getElementById('enquiryModalTitle').textContent = enqId ? 'Edit Enquiry' : 'Add Enquiry';
+  document.getElementById('eqPlan').innerHTML = '<option value="">Select plan</option>' +
+    S.plans.map(p=>`<option value="${p.name}">${p.name}</option>`).join('');
+
+  if (enqId) {
+    const e = S.enquiries.find(x=>x.id===enqId);
+    if (!e) return;
+    document.getElementById('eqName').value = e.name;
+    document.getElementById('eqPhone').value = e.phone;
+    document.getElementById('eqEmail').value = e.email||'';
+    document.getElementById('eqPlan').value = e.interestedPlan||'';
+    document.getElementById('eqSource').value = e.source;
+    document.getElementById('eqFollowUp').value = e.followUpDate||'';
+    document.getElementById('eqNotes').value = e.notes||'';
+  } else {
+    ['eqName','eqPhone','eqEmail','eqNotes'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('eqPlan').value='';
+    document.getElementById('eqSource').value='Walk-in';
+    document.getElementById('eqFollowUp').value='';
+  }
+  openModal('enquiryModal');
+}
+
+async function saveEnquiry() {
+  const name  = document.getElementById('eqName').value.trim();
+  const phone = document.getElementById('eqPhone').value.trim();
+  if (!name)  { toast('Enter name','error'); return; }
+  if (!phone) { toast('Enter phone number','error'); return; }
+
+  const data = {
+    name, phone,
+    email: document.getElementById('eqEmail').value.trim(),
+    interestedPlan: document.getElementById('eqPlan').value,
+    source: document.getElementById('eqSource').value,
+    followUpDate: document.getElementById('eqFollowUp').value,
+    notes: document.getElementById('eqNotes').value.trim(),
+  };
+
+  showLoader(true);
+  try {
+    if (S.editEnqId) {
+      const idx = S.enquiries.findIndex(e=>e.id===S.editEnqId);
+      if (idx!==-1) S.enquiries[idx] = { ...S.enquiries[idx], ...data };
+      await fsUpdate('enquiries', S.editEnqId, data);
+      toast('Enquiry updated!','success');
+    } else {
+      const id = uid('enq');
+      const enq = { id, date: todayStr(), status: 'New', ...data };
+      S.enquiries.push(enq);
+      await fsSet('enquiries', id, enq);
+      toast('Enquiry added!','success');
+    }
+  } catch(e) {
+    toast('Error saving enquiry: ' + e.message, 'error');
+  } finally {
+    showLoader(false);
+  }
+  S.editEnqId = null;
+  closeModal('enquiryModal');
+  renderEnquiries();
+}
+
+async function updateEnqStatus(id, status) {
+  const idx = S.enquiries.findIndex(e=>e.id===id);
+  if (idx!==-1) {
+    S.enquiries[idx].status = status;
+    try {
+      await fsUpdate('enquiries', id, { status });
+      toast(`Status → ${status}`,'info');
+    } catch(e) {
+      toast('Error updating status: ' + e.message, 'error');
+    }
+  }
+}
+
+function deleteEnquiry(id) {
+  confirm2('Delete Enquiry','Remove this enquiry?', async ()=>{
+    showLoader(true);
+    try {
+      await fsDelete('enquiries', id);
+      S.enquiries = S.enquiries.filter(e=>e.id!==id);
+      toast('Enquiry deleted','success');
+      renderEnquiries();
+    } catch(e) {
+      toast('Error deleting enquiry: ' + e.message, 'error');
+    } finally {
+      showLoader(false);
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  STAFF
+// ─────────────────────────────────────────────────────────────────
+function renderStaff() {
+  const grid = document.getElementById('staffGrid');
+  if (!S.staff.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">👨‍💼</div><div class="empty-title">No Staff Added</div><button class="btn btn-primary" onclick="openStaffModal()">➕ Add Staff</button></div>`;
+    return;
+  }
+  const rc = { Admin:'role-admin', Receptionist:'role-receptionist', Trainer:'role-trainer' };
+  grid.innerHTML = S.staff.map(s=>`
+    <div class="staff-card">
+      <div class="staff-avatar">${s.photo?`<img src="${s.photo}" alt="">`:'👤'}</div>
+      <div class="staff-name">${s.name}</div>
+      <span class="staff-role ${rc[s.role]||''}">${s.role}</span>
+      <div class="staff-info">
+        📞 ${s.phone}${s.email?`<br>📧 ${s.email}`:''}<br>
+        📅 Joined ${fmtDate(s.joinDate)}${s.salary?`<br>💰 ${fmtMoney(s.salary)}/month`:''}
+      </div>
+      <div class="staff-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openStaffModal('${s.id}')">✏️ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteStaff('${s.id}')">🗑️ Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+function openStaffModal(staffId) {
+  S.editStaffId = staffId || null;
+  document.getElementById('staffModalTitle').textContent = staffId ? 'Edit Staff' : 'Add Staff';
+  const photoInput = document.getElementById('sfPhoto');
+  photoInput.value = '';
+  delete photoInput.dataset.img;
+  if (staffId) {
+    const s = S.staff.find(x=>x.id===staffId);
+    if (!s) return;
+    document.getElementById('sfName').value = s.name;
+    document.getElementById('sfPhone').value = s.phone;
+    document.getElementById('sfEmail').value = s.email||'';
+    document.getElementById('sfRole').value = s.role;
+    document.getElementById('sfSalary').value = s.salary||'';
+    document.getElementById('sfJoinDate').value = s.joinDate||'';
+    document.getElementById('sfPhotoPreview').innerHTML = s.photo
+      ? `<img src="${s.photo}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--border)">` : '';
+  } else {
+    ['sfName','sfPhone','sfEmail','sfSalary'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('sfRole').value = 'Trainer';
+    document.getElementById('sfJoinDate').value = todayStr();
+    document.getElementById('sfPhotoPreview').innerHTML = '';
+  }
+  openModal('staffModal');
+}
+
+async function saveStaff() {
+  const name  = document.getElementById('sfName').value.trim();
+  const phone = document.getElementById('sfPhone').value.trim();
+  if (!name)  { toast('Enter name','error'); return; }
+  if (!phone) { toast('Enter phone','error'); return; }
+
+  const photoInput = document.getElementById('sfPhoto');
+  const newPhoto = photoInput.dataset.img || null;
+  const data = {
+    name, phone,
+    email: document.getElementById('sfEmail').value.trim(),
+    role: document.getElementById('sfRole').value,
+    salary: document.getElementById('sfSalary').value||'',
+    joinDate: document.getElementById('sfJoinDate').value,
+  };
+
+  showLoader(true);
+  try {
+    if (S.editStaffId) {
+      const photoUpdate = newPhoto ? { photo: newPhoto } : {};
+      const idx = S.staff.findIndex(s=>s.id===S.editStaffId);
+      if (idx!==-1) S.staff[idx] = { ...S.staff[idx], ...data, ...photoUpdate };
+      await fsUpdate('staff', S.editStaffId, { ...data, ...photoUpdate });
+      toast('Staff updated!','success');
+    } else {
+      const id = uid('stf');
+      const staffObj = { id, ...data, photo: newPhoto || '' };
+      S.staff.push(staffObj);
+      await fsSet('staff', id, staffObj);
+      toast('Staff added!','success');
+    }
+  } catch(e) {
+    toast('Error saving staff: ' + e.message, 'error');
+  } finally {
+    showLoader(false);
+  }
+  S.editStaffId = null;
+  closeModal('staffModal');
+  renderStaff();
+}
+
+function deleteStaff(id) {
+  const s = S.staff.find(x=>x.id===id);
+  if (!s) return;
+  confirm2('Delete Staff', `Remove ${s.name} from staff?`, async ()=>{
+    showLoader(true);
+    try {
+      await fsDelete('staff', id);
+      S.staff = S.staff.filter(x=>x.id!==id);
+      toast('Staff removed','success');
+      renderStaff();
+    } catch(e) {
+      toast('Error deleting staff: ' + e.message, 'error');
+    } finally {
+      showLoader(false);
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  ANALYTICS
+// ─────────────────────────────────────────────────────────────────
+function renderAnalytics() {
+  // Destroy previous charts
+  Object.values(S.charts).forEach(c => { try { c.destroy(); } catch(e){} });
+  S.charts = {};
+
+  const totalRev  = S.payments.reduce((s,p)=>s+Number(p.amount||0),0);
+  const active    = S.members.filter(m=>getMemberStatus(m.expiryDate)!=='Expired').length;
+  const converted = S.enquiries.filter(e=>e.status==='Converted').length;
+  const convRate  = S.enquiries.length ? Math.round(converted/S.enquiries.length*100) : 0;
+
+  document.getElementById('analyticsStats').innerHTML = [
+    { icon:'💰', val: fmtMoney(totalRev), label:'Total Revenue',     cls:'blue' },
+    { icon:'💪', val: active,             label:'Active Members',    cls:'green' },
+    { icon:'🎯', val: convRate+'%',        label:'Conversion Rate',   cls:'purple' },
+    { icon:'📋', val: S.enquiries.length,  label:'Total Enquiries',   cls:'orange' },
+  ].map(s=>`<div class="stat-card ${s.cls}"><span class="stat-icon">${s.icon}</span><div class="stat-number ${s.cls}">${s.val}</div><div class="stat-label">${s.label}</div></div>`).join('');
+
+  // Build last 6 month labels and keys
+  const labels=[], keys=[];
+  for (let i=5;i>=0;i--) {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth()-i);
+    labels.push(d.toLocaleString('default',{month:'short',year:'2-digit'}));
+    keys.push(`${d.getFullYear()}-${pad2(d.getMonth()+1)}`);
+  }
+
+  const cOpts = (prefix='') => ({
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend:{display:false}, tooltip:{ callbacks:{ label: ctx => prefix ? `${prefix}${(ctx.parsed.y||0).toLocaleString('en-IN')}` : String(ctx.parsed.y) } } },
+    scales: {
+      x: { grid:{ color:'rgba(255,255,255,0.04)' }, ticks:{ color:'#666', font:{size:11} } },
+      y: { grid:{ color:'rgba(255,255,255,0.04)' }, ticks:{ color:'#666', font:{size:11} }, beginAtZero:true },
+    }
+  });
+
+  const pieOpts = () => ({
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ position:'bottom', labels:{ color:'#888', padding:10, font:{size:11} } } }
+  });
+
+  const COLORS = ['#E31E24','#3b82f6','#22c55e','#f59e0b','#8b5cf6','#ec4899','#14b8a6'];
+
+  // Revenue
+  const revData = keys.map(k => S.payments.filter(p=>p.date&&p.date.startsWith(k)).reduce((s,p)=>s+Number(p.amount||0),0));
+  S.charts.rev = new Chart(document.getElementById('chartRevenue'), {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'Revenue', data:revData, backgroundColor:'rgba(227,30,36,0.65)', borderColor:'#E31E24', borderWidth:2, borderRadius:6 }] },
+    options: cOpts('₹')
+  });
+
+  // New members
+  const memData = keys.map(k => S.members.filter(m=>m.joinDate&&m.joinDate.startsWith(k)).length);
+  S.charts.mem = new Chart(document.getElementById('chartMembers'), {
+    type:'line',
+    data:{ labels, datasets:[{ label:'Members', data:memData, borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.08)', borderWidth:2.5, fill:true, tension:0.4, pointBackgroundColor:'#3b82f6', pointRadius:4 }] },
+    options: cOpts()
+  });
+
+  // Plan distribution
+  const planMap = {};
+  S.members.forEach(m => { if(m.planName) planMap[m.planName]=(planMap[m.planName]||0)+1; });
+  S.charts.plans = new Chart(document.getElementById('chartPlans'), {
+    type:'doughnut',
+    data:{ labels: Object.keys(planMap).length?Object.keys(planMap):['No Data'], datasets:[{ data: Object.values(planMap).length?Object.values(planMap):[1], backgroundColor: COLORS, borderColor:'#111', borderWidth:3 }] },
+    options: pieOpts()
+  });
+
+  // Enquiry sources
+  const srcMap = {};
+  S.enquiries.forEach(e => { srcMap[e.source]=(srcMap[e.source]||0)+1; });
+  S.charts.src = new Chart(document.getElementById('chartSources'), {
+    type:'pie',
+    data:{ labels: Object.keys(srcMap).length?Object.keys(srcMap):['No Data'], datasets:[{ data: Object.values(srcMap).length?Object.values(srcMap):[1], backgroundColor: COLORS.slice().reverse(), borderColor:'#111', borderWidth:3 }] },
+    options: pieOpts()
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  WHATSAPP
+// ─────────────────────────────────────────────────────────────────
+function getGymPhone() { return localStorage.getItem('mlg_gym_phone') || '9876543210'; }
+
+function openWA(phone, msg) {
+  const clean = phone.replace(/\D/g,'');
+  const full  = clean.length===10 ? '91'+clean : clean;
+  window.open(`https://wa.me/${full}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function sendWA_expiry(memberId) {
+  const m = getMember(memberId);
+  if (!m) return;
+  openWA(m.phone,
+    `Hi ${m.name}! Your MuscleLab membership expires on ${fmtDate(m.expiryDate)}. Renew now to continue your fitness journey! Contact us: ${getGymPhone()} — MuscleLab Gym`
+  );
+}
+
+function sendWA_receipt(payId) {
+  const p = S.payments.find(x=>x.id===payId);
+  if (!p) return;
+  const m = getMember(p.memberId);
+  if (!m) return;
+  openWA(m.phone,
+    `Hi ${m.name}! Payment of ₹${p.amount} received for ${p.planName||'membership'}. Valid till ${fmtDate(p.expiryDate)}. Thank you! — MuscleLab Gym (${getGymPhone()})`
+  );
+}
+
+function sendWA_enquiry(enqId) {
+  const e = S.enquiries.find(x=>x.id===enqId);
+  if (!e) return;
+  openWA(e.phone,
+    `Hi ${e.name}! Thank you for your interest in MuscleLab Gym. We'd love to help you start your fitness journey! Please call us at ${getGymPhone()} for more details. — MuscleLab Gym`
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  SETTINGS
+// ─────────────────────────────────────────────────────────────────
+function openSettingsModal() {
+  document.getElementById('setGymPhone').value = localStorage.getItem('mlg_gym_phone') || '';
+  document.getElementById('setGymName').value  = localStorage.getItem('mlg_gym_name')  || '';
+  openModal('settingsModal');
+}
+
+function saveSettings() {
+  const phone = document.getElementById('setGymPhone').value.trim();
+  const name  = document.getElementById('setGymName').value.trim();
+  if (phone) localStorage.setItem('mlg_gym_phone', phone);
+  if (name)  localStorage.setItem('mlg_gym_name',  name);
+  closeModal('settingsModal');
+  toast('Settings saved!', 'success');
+}
+
+function renderSettings() {
+  document.getElementById('settingsGymName').value  = localStorage.getItem('mlg_gym_name')  || '';
+  document.getElementById('settingsGymPhone').value = localStorage.getItem('mlg_gym_phone') || '';
+  if (currentUserRole === 'admin') {
+    document.getElementById('userMgmtSection').style.display = '';
+    renderUsersAdmin();
+  } else {
+    document.getElementById('userMgmtSection').style.display = 'none';
+  }
+}
+
+function saveGymSettings() {
+  const name  = document.getElementById('settingsGymName').value.trim();
+  const phone = document.getElementById('settingsGymPhone').value.trim();
+  if (name)  localStorage.setItem('mlg_gym_name',  name);
+  if (phone) localStorage.setItem('mlg_gym_phone', phone);
+  toast('Settings saved!', 'success');
+}
+
+async function renderUsersAdmin() {
+  const wrap = document.getElementById('usersListAdmin');
+  if (!wrap) return;
+  wrap.innerHTML = `<div style="color:var(--text2);font-size:13px;padding:8px 0">Loading users…</div>`;
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    const users = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+    if (!users.length) {
+      wrap.innerHTML = `<div class="empty-state" style="padding:24px"><div class="empty-icon">👥</div><div>No users found.</div></div>`;
+      return;
+    }
+    const roleTag = r => {
+      const cls = { admin:'user-tag-admin', receptionist:'user-tag-receptionist', trainer:'user-tag-trainer' };
+      return `<span class="user-tag ${cls[r]||''}">${r}</span>`;
+    };
+    wrap.innerHTML = `
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead>
+          <tbody>${users.map(u => `
+            <tr>
+              <td><strong>${u.name || '—'}</strong></td>
+              <td class="td-muted">${u.email || '—'}</td>
+              <td>${roleTag(u.role)}</td>
+              <td>${u.uid === currentUser?.uid
+                ? `<span style="color:var(--text2);font-size:12px">(you)</span>`
+                : `<button class="btn btn-danger btn-sm" onclick="deleteAppUser('${u.docId}')">🗑️ Remove</button>`
+              }</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } catch(err) {
+    wrap.innerHTML = `<div style="color:var(--danger);font-size:13px">Error: ${err.message}</div>`;
+  }
+}
+
+async function createAppUser() {
+  const name  = document.getElementById('newUserName').value.trim();
+  const email = document.getElementById('newUserEmail').value.trim();
+  const pass  = document.getElementById('newUserPass').value;
+  const role  = document.getElementById('newUserRole').value;
+  if (!name)               { toast('Enter full name','error'); return; }
+  if (!email)              { toast('Enter email address','error'); return; }
+  if (!pass||pass.length<6){ toast('Password must be at least 6 characters','error'); return; }
+  showLoader(true);
+  try {
+    // Use secondary auth instance so the admin stays logged in
+    const cred = await createUserWithEmailAndPassword(authAux, email, pass);
+    await setDoc(doc(db, 'users', cred.user.uid), { uid: cred.user.uid, name, email, role });
+    await signOut(authAux); // sign out from secondary instance immediately
+    toast(`User "${name}" created as ${role}!`, 'success');
+    document.getElementById('newUserName').value  = '';
+    document.getElementById('newUserEmail').value = '';
+    document.getElementById('newUserPass').value  = '';
+    document.getElementById('newUserRole').value  = 'receptionist';
+    renderUsersAdmin();
+  } catch(err) {
+    toast('Error creating user: ' + err.message, 'error');
+  } finally {
+    showLoader(false);
+  }
+}
+
+async function deleteAppUser(docId) {
+  if (!docId) return;
+  confirm2('Remove User', 'Remove this user? They will no longer be able to log in.', async () => {
+    showLoader(true);
+    try {
+      await deleteDoc(doc(db, 'users', docId));
+      toast('User removed', 'success');
+      renderUsersAdmin();
+    } catch(err) {
+      toast('Error removing user: ' + err.message, 'error');
+    } finally {
+      showLoader(false);
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  WINDOW EXPORTS (required for ES module onclick handlers)
+// ─────────────────────────────────────────────────────────────────
+Object.assign(window, {
+  handleLogin, doLogout, showApp, setupAdmin,
+  navigate, toggleSidebar, closeSidebar,
+  openModal, closeModal,
+  openMemberModal, saveMember, deleteMember, openProfile, onMemberPlanChange, previewPhoto,
+  openPlanModal, savePlan, deletePlan,
+  openPaymentModal, savePayment, deletePayment, openRenewalModal, onPayMemberChange, onPayPlanChange, exportCSV,
+  openEnquiryModal, saveEnquiry, updateEnqStatus, deleteEnquiry,
+  openStaffModal, saveStaff, deleteStaff,
+  renderMembers, renderPayments, renderEnquiries,
+  sendWA_expiry, sendWA_receipt, sendWA_enquiry,
+  openSettingsModal, saveSettings, saveGymSettings, createAppUser, deleteAppUser, renderUsersAdmin,
+});
+
+// ─────────────────────────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────────────────────────
+showLoader(true);
+
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    currentUser = user;
+    await fetchUserRole(user.uid);
+    showLoader(false);
+    showApp();
+  } else {
+    currentUser     = null;
+    currentUserRole = null;
+    currentUserName = 'User';
+    showLoader(false);
+    try {
+      const isFirstRun = await checkFirstRun();
+      if (isFirstRun) showSetupPage();
+      else showLoginPage();
+    } catch(e) {
+      showLoginPage();
+    }
+  }
+});
+
+load().then(async () => {
+  await initDefaults();
+  setupDashboardListeners();
+}).catch(e => {
+  toast('Connection failed: ' + e.message, 'error');
+  console.error('Firebase init error:', e);
+});
+</script>
+</body>
+</html>
