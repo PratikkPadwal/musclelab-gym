@@ -498,6 +498,21 @@
       <div id="loginError" class="login-error" style="display:none">❌ Invalid email or password</div>
       <button type="submit" class="btn btn-primary btn-full btn-lg" style="margin-top:4px">Login &rarr;</button>
     </form>
+    <p style="text-align:center;margin-top:18px">
+      <a onclick="showForgotPassword()" style="color:var(--primary);font-size:13px;cursor:pointer;text-decoration:underline">Forgot Password?</a>
+    </p>
+    <!-- Forgot Password inline panel -->
+    <div id="forgotPanel" style="display:none;margin-top:18px;padding:18px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius)">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px">🔑 Reset Password</div>
+      <div class="form-group" style="margin-bottom:10px">
+        <input type="email" id="forgotEmail" placeholder="Enter your email address" style="width:100%;padding:10px 12px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;outline:none">
+      </div>
+      <div id="forgotMsg" style="display:none;font-size:12px;margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="sendResetEmail()">Send Reset Link</button>
+        <button class="btn btn-secondary btn-sm" onclick="hideForgotPassword()">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1016,7 +1031,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getFirestore, collection, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
 // ─────────────────────────────────────────────────────────────────
 //  FIREBASE
@@ -1293,6 +1308,41 @@ async function setupAdmin(e) {
   } catch(err) {
     errEl.textContent = err.message;
     errEl.style.display = 'block';
+  } finally {
+    showLoader(false);
+  }
+}
+
+function showForgotPassword() {
+  document.getElementById('forgotPanel').style.display = 'block';
+  document.getElementById('forgotMsg').style.display = 'none';
+  document.getElementById('forgotEmail').value = document.getElementById('loginUser').value || '';
+  document.getElementById('forgotEmail').focus();
+}
+
+function hideForgotPassword() {
+  document.getElementById('forgotPanel').style.display = 'none';
+}
+
+async function sendResetEmail() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  const msgEl = document.getElementById('forgotMsg');
+  if (!email) {
+    msgEl.textContent = '❌ Please enter your email address.';
+    msgEl.style.color = 'var(--danger)';
+    msgEl.style.display = 'block';
+    return;
+  }
+  showLoader(true);
+  try {
+    await sendPasswordResetEmail(auth, email);
+    msgEl.textContent = '✅ Reset link sent! Check your email inbox (and spam folder).';
+    msgEl.style.color = 'var(--success)';
+    msgEl.style.display = 'block';
+  } catch(err) {
+    msgEl.textContent = '❌ ' + (err.code === 'auth/user-not-found' ? 'No account found with this email.' : err.message);
+    msgEl.style.color = 'var(--danger)';
+    msgEl.style.display = 'block';
   } finally {
     showLoader(false);
   }
@@ -2489,6 +2539,7 @@ Object.assign(window, {
   renderMembers, renderPayments, renderEnquiries,
   sendWA_expiry, sendWA_receipt, sendWA_enquiry,
   openSettingsModal, saveSettings, saveGymSettings, createAppUser, deleteAppUser, renderUsersAdmin,
+  showForgotPassword, hideForgotPassword, sendResetEmail,
 });
 
 // ─────────────────────────────────────────────────────────────────
