@@ -473,7 +473,9 @@
     #invoicePrintArea { display:none; }
     @media print {
       body > *:not(#invoicePrintArea) { display:none !important; }
-      #invoicePrintArea { display:block !important;position:fixed;inset:0;background:#fff;z-index:99999;padding:32px;color:#000; }
+      #invoicePrintArea { display:block !important;position:fixed;inset:0;background:#fff;z-index:99999;padding:0;color:#000; }
+      #invoiceContent { box-shadow:none !important;border:none !important;border-radius:0 !important;max-width:100% !important;width:100% !important; }
+      * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
     }
 
     /* ── SETTINGS PAGE ───────────────────────────────────── */
@@ -2671,101 +2673,200 @@ function openInvoiceModal(payId) {
 }
 
 function buildInvoiceHTML(p, m, gs, gymName, amtDue) {
-  const planAmt  = (p.amount || 0) + (amtDue || 0);
-  const discount = 0;
-  const paid     = p.amount || 0;
-  const due      = amtDue || 0;
+  const planAmt = (p.amount || 0) + (amtDue || 0);
+  const paid    = p.amount || 0;
+  const due     = amtDue || 0;
+
+  // ── small helpers ────────────────────────────────────────────
+  const INR = n => '&#8377;' + Number(n).toLocaleString('en-IN');
+  const lbl = (text) =>
+    `<div style="font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;
+       color:#E31E24;margin-bottom:10px;padding-bottom:6px;
+       border-bottom:2px solid #E31E24;display:inline-block">${text}</div>`;
 
   return `
-  <div id="invoiceContent" style="background:#ffffff;color:#111111;font-family:'Helvetica Neue',Arial,sans-serif;width:100%;max-width:680px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
+<div id="invoiceContent"
+  style="background:#FFFFFF;color:#1a1a1a;
+         font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+         width:100%;max-width:700px;margin:0 auto;
+         border:1px solid #e8e8e8;border-radius:2px;
+         box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
-    <!-- Header strip -->
-    <div style="background:#E31E24;padding:28px 32px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+  <!-- ══ HEADER ══════════════════════════════════════════ -->
+  <div style="padding:36px 40px 28px;display:flex;justify-content:space-between;align-items:flex-start">
+
+    <!-- Left: Gym branding -->
+    <div style="display:flex;align-items:center;gap:14px">
+      <!-- Logo placeholder -->
+      <div style="width:52px;height:52px;background:#0a0a0a;border-radius:4px;
+                  display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <div style="font-size:9px;font-weight:900;color:#E31E24;letter-spacing:1px;
+                    line-height:1.1;text-align:center">M<br>LAB</div>
+      </div>
       <div>
-        <div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px">${gymName}</div>
-        ${gs.address ? `<div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:4px;line-height:1.5">${gs.address}</div>` : ''}
-        ${gs.phone   ? `<div style="font-size:11px;color:rgba(255,255,255,0.8)">&#9990; ${gs.phone}</div>` : ''}
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:3px;text-transform:uppercase">Receipt</div>
-        <div style="font-size:22px;font-weight:900;color:#fff;font-family:monospace">${p.receiptNo}</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px">Date: ${fmtDate(p.date)}</div>
-      </div>
-    </div>
-
-    <!-- Bill To + Membership -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #eee">
-      <div style="padding:22px 28px;border-right:1px solid #eee">
-        <div style="font-size:10px;font-weight:700;color:#999;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">Bill To</div>
-        <div style="font-size:17px;font-weight:700;color:#111;margin-bottom:4px">${m ? m.name : p.memberName}</div>
-        ${m ? `<div style="font-size:12px;color:#555;margin-bottom:2px">&#128222; ${m.phone}</div>` : ''}
-        ${m && m.email ? `<div style="font-size:12px;color:#555;margin-bottom:2px">&#9993; ${m.email}</div>` : ''}
-        ${m ? `<div style="font-size:12px;color:#888;margin-top:4px">Member ID: <strong>${m.id}</strong></div>` : ''}
-      </div>
-      <div style="padding:22px 28px">
-        <div style="font-size:10px;font-weight:700;color:#999;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">Membership Details</div>
-        ${p.planName ? `<div style="font-size:14px;font-weight:600;color:#111;margin-bottom:4px">${p.planName}</div>` : ''}
-        ${p.date     ? `<div style="font-size:12px;color:#555">From: <strong>${fmtDate(p.date)}</strong></div>` : ''}
-        ${p.expiryDate ? `<div style="font-size:12px;color:#555">Valid Till: <strong style="color:#22c55e">${fmtDate(p.expiryDate)}</strong></div>` : ''}
-        <div style="font-size:12px;color:#555;margin-top:4px">Mode: <strong>${p.mode}</strong></div>
+        <div style="font-size:22px;font-weight:900;color:#0a0a0a;letter-spacing:-0.5px;
+                    line-height:1">${gymName}</div>
+        ${gs.address
+          ? `<div style="font-size:10.5px;color:#888;margin-top:4px;line-height:1.5;max-width:220px">${gs.address}</div>`
+          : ''}
+        ${gs.phone
+          ? `<div style="font-size:10.5px;color:#888">Tel: ${gs.phone}</div>`
+          : ''}
       </div>
     </div>
 
-    <!-- Items table -->
-    <div style="padding:24px 28px">
+    <!-- Right: INVOICE label + meta -->
+    <div style="text-align:right">
+      <div style="font-size:36px;font-weight:900;color:#E31E24;letter-spacing:-1px;
+                  line-height:1;text-transform:uppercase">INVOICE</div>
+      <div style="margin-top:10px">
+        <div style="font-size:11px;color:#888">Receipt No</div>
+        <div style="font-size:15px;font-weight:800;color:#0a0a0a;font-family:monospace;
+                    letter-spacing:0.5px">${p.receiptNo}</div>
+      </div>
+      <div style="margin-top:6px">
+        <div style="font-size:11px;color:#888">Date</div>
+        <div style="font-size:13px;font-weight:600;color:#1a1a1a">${fmtDate(p.date)}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ RED SEPARATOR ══════════════════════════════════ -->
+  <div style="height:3px;background:linear-gradient(to right,#E31E24,#ff6b6b,#E31E24);margin:0"></div>
+
+  <!-- ══ BILL TO + MEMBERSHIP ═══════════════════════════ -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;padding:32px 40px;background:#fafafa;border-bottom:1px solid #eeeeee">
+
+    <!-- Bill To -->
+    <div style="padding-right:32px;border-right:1px solid #e8e8e8">
+      ${lbl('Bill To')}
+      <div style="font-size:18px;font-weight:800;color:#0a0a0a;margin-bottom:8px">
+        ${m ? m.name : p.memberName}</div>
+      ${m ? `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;margin-bottom:4px">
+        <span style="color:#E31E24;font-size:13px">&#9742;</span>${m.phone}</div>` : ''}
+      ${m && m.email ? `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;margin-bottom:4px">
+        <span style="color:#E31E24;font-size:11px">&#9993;</span>${m.email}</div>` : ''}
+      ${m ? `<div style="margin-top:8px;display:inline-block;background:#f0f0f0;
+                padding:3px 10px;border-radius:3px;font-size:10.5px;color:#555">
+        Member ID &nbsp;<strong style="color:#0a0a0a">${m.id}</strong></div>` : ''}
+    </div>
+
+    <!-- Membership Details -->
+    <div style="padding-left:32px">
+      ${lbl('Membership Details')}
+      ${p.planName ? `<div style="font-size:15px;font-weight:700;color:#0a0a0a;margin-bottom:10px">${p.planName}</div>` : ''}
       <table style="width:100%;border-collapse:collapse">
-        <thead>
-          <tr style="background:#f7f7f7">
-            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:0.8px;border-bottom:2px solid #eee">Description</th>
-            <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:0.8px;border-bottom:2px solid #eee;width:130px">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style="padding:14px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0">
-              ${p.planName || 'Gym Membership'}
-              ${p.note ? `<div style="font-size:11px;color:#888;margin-top:3px">${p.note}</div>` : ''}
-            </td>
-            <td style="padding:14px;text-align:right;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0">&#8377;${planAmt.toLocaleString('en-IN')}</td>
-          </tr>
-        </tbody>
-        <tfoot>
-          ${discount > 0 ? `
-          <tr>
-            <td style="padding:8px 14px;text-align:right;font-size:12px;color:#888;border-bottom:1px solid #f0f0f0">Discount</td>
-            <td style="padding:8px 14px;text-align:right;font-size:12px;color:#22c55e;border-bottom:1px solid #f0f0f0">- &#8377;${discount.toLocaleString('en-IN')}</td>
-          </tr>` : ''}
-          <tr>
-            <td style="padding:10px 14px;text-align:right;font-size:13px;font-weight:600;color:#444;border-bottom:1px solid #eee">Amount Paid</td>
-            <td style="padding:10px 14px;text-align:right;font-size:16px;font-weight:800;color:#22c55e;border-bottom:1px solid #eee">&#8377;${paid.toLocaleString('en-IN')}</td>
-          </tr>
-          ${due > 0 ? `
-          <tr style="background:#fff8f0">
-            <td style="padding:10px 14px;text-align:right;font-size:13px;font-weight:600;color:#f59e0b;border-bottom:1px solid #eee">Balance Due</td>
-            <td style="padding:10px 14px;text-align:right;font-size:16px;font-weight:800;color:#f59e0b;border-bottom:1px solid #eee">&#8377;${due.toLocaleString('en-IN')}</td>
-          </tr>` : ''}
-          <tr style="background:#E31E24">
-            <td style="padding:12px 14px;text-align:right;font-size:13px;font-weight:700;color:#fff">Total Plan Value</td>
-            <td style="padding:12px 14px;text-align:right;font-size:20px;font-weight:900;color:#fff">&#8377;${planAmt.toLocaleString('en-IN')}</td>
-          </tr>
-        </tfoot>
+        ${p.date ? `<tr>
+          <td style="font-size:11px;color:#888;padding:3px 0;width:90px">From</td>
+          <td style="font-size:12px;font-weight:600;color:#1a1a1a">${fmtDate(p.date)}</td>
+        </tr>` : ''}
+        ${p.expiryDate ? `<tr>
+          <td style="font-size:11px;color:#888;padding:3px 0">Valid Till</td>
+          <td style="font-size:12px;font-weight:700;color:#16a34a">${fmtDate(p.expiryDate)}</td>
+        </tr>` : ''}
+        <tr>
+          <td style="font-size:11px;color:#888;padding:3px 0">Mode</td>
+          <td style="font-size:12px;font-weight:600;color:#1a1a1a">${p.mode}</td>
+        </tr>
       </table>
     </div>
+  </div>
 
-    <!-- Footer -->
-    <div style="padding:20px 28px;background:#fafafa;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px">
-      <div>
-        <div style="font-size:12px;color:#888;font-style:italic;margin-bottom:6px">${gs.tagline || 'Thank you for choosing us!'}</div>
-        <div style="font-size:10px;color:#bbb">Generated on ${new Date().toLocaleString('en-IN')}</div>
-      </div>
-      <div style="text-align:center">
-        <div style="height:40px;border-bottom:1px solid #aaa;min-width:140px;margin-bottom:4px"></div>
-        <div style="font-size:11px;color:#888">Authorized Signature</div>
-        ${gs.signature ? `<div style="font-size:12px;font-weight:600;color:#444;margin-top:2px">${gs.signature}</div>` : ''}
-      </div>
+  <!-- ══ DESCRIPTION TABLE ══════════════════════════════ -->
+  <div style="padding:32px 40px 0">
+    <table style="width:100%;border-collapse:collapse">
+
+      <!-- Table header -->
+      <thead>
+        <tr style="background:#0a0a0a">
+          <th style="padding:13px 16px;text-align:left;font-size:10px;font-weight:700;
+                     letter-spacing:1.5px;text-transform:uppercase;color:#ffffff">#</th>
+          <th style="padding:13px 16px;text-align:left;font-size:10px;font-weight:700;
+                     letter-spacing:1.5px;text-transform:uppercase;color:#ffffff">Description</th>
+          <th style="padding:13px 16px;text-align:right;font-size:10px;font-weight:700;
+                     letter-spacing:1.5px;text-transform:uppercase;color:#ffffff;width:140px">Amount</th>
+        </tr>
+      </thead>
+
+      <!-- Line item -->
+      <tbody>
+        <tr style="border-bottom:1px solid #f0f0f0">
+          <td style="padding:18px 16px;font-size:12px;color:#888;vertical-align:top">01</td>
+          <td style="padding:18px 16px;vertical-align:top">
+            <div style="font-size:14px;font-weight:600;color:#1a1a1a">
+              ${p.planName || 'Gym Membership'}</div>
+            ${p.note ? `<div style="font-size:11px;color:#888;margin-top:4px">${p.note}</div>` : ''}
+            ${p.expiryDate ? `<div style="font-size:11px;color:#888;margin-top:2px">
+              ${fmtDate(p.date)} &mdash; ${fmtDate(p.expiryDate)}</div>` : ''}
+          </td>
+          <td style="padding:18px 16px;text-align:right;font-size:14px;font-weight:600;
+                     color:#1a1a1a;vertical-align:top">${INR(planAmt)}</td>
+        </tr>
+      </tbody>
+
+      <!-- Summary rows -->
+      <tfoot>
+        <!-- Spacer -->
+        <tr><td colspan="3" style="padding:8px 0"></td></tr>
+
+        <!-- Amount Paid -->
+        <tr style="border-top:1px solid #eeeeee">
+          <td colspan="2" style="padding:12px 16px;text-align:right;
+                font-size:12px;font-weight:600;color:#555">Amount Paid</td>
+          <td style="padding:12px 16px;text-align:right;
+                font-size:16px;font-weight:800;color:#16a34a">${INR(paid)}</td>
+        </tr>
+
+        <!-- Balance Due (only if > 0) -->
+        ${due > 0 ? `
+        <tr style="background:#fff5f5;border-top:1px solid #ffd5d5">
+          <td colspan="2" style="padding:12px 16px;text-align:right;
+                font-size:12px;font-weight:600;color:#E31E24">Balance Due</td>
+          <td style="padding:12px 16px;text-align:right;
+                font-size:16px;font-weight:800;color:#E31E24">${INR(due)}</td>
+        </tr>` : ''}
+
+        <!-- Total Plan Value -->
+        <tr style="background:#E31E24">
+          <td colspan="2" style="padding:16px;text-align:right;
+                font-size:11px;font-weight:700;letter-spacing:1px;
+                text-transform:uppercase;color:rgba(255,255,255,0.85)">Total Plan Value</td>
+          <td style="padding:16px;text-align:right;
+                font-size:24px;font-weight:900;color:#ffffff">${INR(planAmt)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- ══ FOOTER ════════════════════════════════════════════ -->
+  <div style="padding:28px 40px;display:flex;justify-content:space-between;
+              align-items:flex-end;flex-wrap:wrap;gap:20px">
+
+    <!-- Left: thank you + generated stamp -->
+    <div>
+      <div style="font-size:15px;font-weight:700;color:#0a0a0a;margin-bottom:4px">
+        Thank you for your membership!</div>
+      <div style="font-size:11px;color:#aaa;font-style:italic">
+        ${gs.tagline || 'Stay strong. Stay consistent.'}</div>
+      <div style="font-size:9.5px;color:#ccc;margin-top:8px">
+        Generated by ${gymName} &nbsp;&middot;&nbsp; ${new Date().toLocaleString('en-IN')}</div>
     </div>
 
-  </div>`;
+    <!-- Right: signature block -->
+    <div style="text-align:center;min-width:160px">
+      <div style="height:44px;border-bottom:1.5px solid #cccccc;margin-bottom:6px">
+        ${gs.signature ? `<div style="font-size:14px;font-style:italic;font-weight:600;
+          color:#1a1a1a;padding-top:16px">${gs.signature}</div>` : ''}
+      </div>
+      <div style="font-size:10px;font-weight:600;letter-spacing:0.5px;color:#888">
+        AUTHORIZED SIGNATORY</div>
+    </div>
+  </div>
+
+  <!-- ══ BOTTOM ACCENT ═════════════════════════════════════ -->
+  <div style="height:5px;background:linear-gradient(to right,#0a0a0a 0%,#E31E24 50%,#0a0a0a 100%)"></div>
+
+</div>`;
 }
 
 function printInvoice() {
