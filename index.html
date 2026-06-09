@@ -6,6 +6,7 @@
   <title>MuscleLab Gym Management</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -852,8 +853,8 @@
           </select>
         </div>
         <div class="form-group" id="mPayAmtWrap">
-          <label>Payment Amount (₹) *</label>
-          <input type="number" id="mPayAmt" placeholder="Enter amount" min="0">
+          <label>Amount Paid (₹) *</label>
+          <input type="number" id="mPayAmt" placeholder="Enter amount paid" min="0" oninput="updateMemberDue()">
         </div>
         <div class="form-group" id="mPayModeWrap">
           <label>Payment Mode</label>
@@ -862,6 +863,10 @@
             <option value="UPI">UPI</option>
             <option value="Card">Card</option>
           </select>
+        </div>
+        <div class="form-group col-span-2" id="mPayDueWrap">
+          <label>Due / Pending Amount (₹) <span style="color:var(--text2);font-weight:400;font-size:11px">auto-calculated · edit if needed</span></label>
+          <input type="number" id="mPayDue" placeholder="0" min="0" value="0">
         </div>
         <div class="form-group col-span-2">
           <label>Photo (Optional)</label>
@@ -1045,11 +1050,14 @@
       <div class="modal-title">🧾 Invoice / Receipt</div>
       <button class="modal-close" onclick="closeModal('invoiceModal')">&#10005;</button>
     </div>
-    <div class="modal-body" id="invoiceBody"></div>
-    <div class="modal-footer">
+    <div class="modal-body" style="padding:16px">
+      <div id="invoiceBody"></div>
+    </div>
+    <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
       <button class="btn btn-secondary" onclick="closeModal('invoiceModal')">Close</button>
+      <button class="btn btn-secondary" onclick="printInvoice()">🖨️ Print</button>
+      <button class="btn btn-primary" onclick="downloadInvoiceImage()">⬇️ Download Image</button>
       <button class="btn btn-whatsapp" onclick="shareInvoiceWA()">💬 Share via WhatsApp</button>
-      <button class="btn btn-primary" onclick="printInvoice()">🖨️ Print</button>
     </div>
   </div>
 </div>
@@ -1689,6 +1697,7 @@ function openMemberModal(memberId) {
     document.getElementById('mPlan').value = m.planId||'';
     document.getElementById('mPayAmtWrap').style.display = 'none';
     document.getElementById('mPayModeWrap').style.display = 'none';
+    document.getElementById('mPayDueWrap').style.display = 'none';
     document.getElementById('mPhotoPreview').innerHTML = m.photo
       ? `<img src="${m.photo}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--border)">` : '';
   } else {
@@ -1699,9 +1708,11 @@ function openMemberModal(memberId) {
     document.getElementById('mJoinDate').value = todayStr();
     document.getElementById('mPlan').value = '';
     document.getElementById('mPayAmt').value = '';
+    document.getElementById('mPayDue').value = '0';
     document.getElementById('mPayMode').value = 'Cash';
     document.getElementById('mPayAmtWrap').style.display = '';
     document.getElementById('mPayModeWrap').style.display = '';
+    document.getElementById('mPayDueWrap').style.display = '';
     document.getElementById('mPhotoPreview').innerHTML = '';
   }
   openModal('memberModal');
@@ -1709,7 +1720,18 @@ function openMemberModal(memberId) {
 
 function onMemberPlanChange() {
   const plan = getPlan(document.getElementById('mPlan').value);
-  if (plan && !S.editMemberId) document.getElementById('mPayAmt').value = plan.price;
+  if (plan && !S.editMemberId) {
+    document.getElementById('mPayAmt').value = plan.price;
+    document.getElementById('mPayDue').value = '0';
+  }
+}
+
+function updateMemberDue() {
+  const plan = getPlan(document.getElementById('mPlan').value);
+  if (!plan || S.editMemberId) return;
+  const paid = parseFloat(document.getElementById('mPayAmt').value || 0) || 0;
+  const due  = Math.max(0, plan.price - paid);
+  document.getElementById('mPayDue').value = due > 0 ? due : '0';
 }
 
 async function saveMember() {
@@ -1762,7 +1784,8 @@ async function saveMember() {
       S.members.push(member);
       await fsSet('members', id, member);
       // Auto-record initial payment
-      const amt = parseFloat(document.getElementById('mPayAmt').value || 0);
+      const amt  = parseFloat(document.getElementById('mPayAmt').value || 0);
+      const amtDue = parseFloat(document.getElementById('mPayDue').value || 0) || 0;
       const mode = document.getElementById('mPayMode').value;
       if (amt > 0) {
         const payment = {
@@ -1773,8 +1796,20 @@ async function saveMember() {
         };
         S.payments.push(payment);
         await fsSet('payments', payment.id, payment);
+        // Track partial payment due
+        if (amtDue > 0) {
+          const rx = {
+            id: uid('rx'), memberId: id, memberName: name,
+            phone, amount: amtDue,
+            description: `Balance for ${plan ? plan.name : 'membership'} (${payment.receiptNo})`,
+            relatedReceiptNo: payment.receiptNo, relatedPayId: payment.id,
+            createdAt: joinDate, status: 'pending',
+          };
+          S.receivables.push(rx);
+          await fsSet('receivables', rx.id, rx);
+        }
       }
-      toast(`Member ${id} added!`, 'success');
+      toast(`Member ${id} added!${amtDue > 0 ? ` Due: ₹${amtDue}` : ''}`, 'success');
     }
   } catch(e) {
     toast('Error saving member: ' + e.message, 'error');
@@ -2585,72 +2620,116 @@ function renderAnalytics() {
 // ─────────────────────────────────────────────────────────────────
 function openInvoiceModal(payId) {
   _invoicePayId = payId;
-  const p = S.payments.find(x => x.id === payId);
+  const p  = S.payments.find(x => x.id === payId);
   if (!p) return;
   const m  = getMember(p.memberId);
   const gs = S.gymSettings;
   const gymName = getGymName();
-  document.getElementById('invoiceBody').innerHTML = `
-    <div id="invoiceContent" style="font-family:'Inter',sans-serif;color:#111;background:#fff;padding:8px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #E31E24;padding-bottom:16px;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-        <div>
-          <div style="font-size:26px;font-weight:900;letter-spacing:-1px;color:#111">${gymName}</div>
-          ${gs.address ? `<div style="font-size:11px;color:#666;margin-top:3px;max-width:260px;line-height:1.4">${gs.address}</div>` : ''}
-          ${gs.phone ? `<div style="font-size:11px;color:#666">\u260e\ufe0f ${gs.phone}</div>` : ''}
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:20px;font-weight:800;color:#E31E24;letter-spacing:1px">RECEIPT</div>
-          <div style="font-size:13px;font-family:monospace;color:#444;font-weight:700">${p.receiptNo}</div>
-          <div style="font-size:12px;color:#888">${fmtDate(p.date)}</div>
-        </div>
+
+  // Look up pending due for this payment (if any)
+  const rx = S.receivables.find(r => r.relatedPayId === payId && r.status === 'pending');
+  const amtDue = rx ? rx.amount : 0;
+
+  document.getElementById('invoiceBody').innerHTML = buildInvoiceHTML(p, m, gs, gymName, amtDue);
+  openModal('invoiceModal');
+}
+
+function buildInvoiceHTML(p, m, gs, gymName, amtDue) {
+  const planAmt  = (p.amount || 0) + (amtDue || 0);
+  const discount = 0;
+  const paid     = p.amount || 0;
+  const due      = amtDue || 0;
+
+  return `
+  <div id="invoiceContent" style="background:#ffffff;color:#111111;font-family:'Helvetica Neue',Arial,sans-serif;width:100%;max-width:680px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
+
+    <!-- Header strip -->
+    <div style="background:#E31E24;padding:28px 32px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px">${gymName}</div>
+        ${gs.address ? `<div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:4px;line-height:1.5">${gs.address}</div>` : ''}
+        ${gs.phone   ? `<div style="font-size:11px;color:rgba(255,255,255,0.8)">&#9990; ${gs.phone}</div>` : ''}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-        <div>
-          <div style="font-size:10px;font-weight:700;color:#999;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Bill To</div>
-          <div style="font-weight:700;font-size:15px">${m ? m.name : p.memberName}</div>
-          ${m ? `<div style="font-size:12px;color:#555">\ud83d\udcde ${m.phone}</div>` : ''}
-          ${m && m.email ? `<div style="font-size:12px;color:#555">\ud83d\udce7 ${m.email}</div>` : ''}
-          ${m ? `<div style="font-size:12px;color:#555">ID: ${m.id}</div>` : ''}
-        </div>
-        <div>
-          <div style="font-size:10px;font-weight:700;color:#999;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Membership</div>
-          ${p.planName ? `<div style="font-size:12px;color:#444">Plan: <strong>${p.planName}</strong></div>` : ''}
-          ${p.expiryDate ? `<div style="font-size:12px;color:#444">Valid Till: <strong>${fmtDate(p.expiryDate)}</strong></div>` : ''}
-        </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:3px;text-transform:uppercase">Receipt</div>
+        <div style="font-size:22px;font-weight:900;color:#fff;font-family:monospace">${p.receiptNo}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px">Date: ${fmtDate(p.date)}</div>
       </div>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+    </div>
+
+    <!-- Bill To + Membership -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #eee">
+      <div style="padding:22px 28px;border-right:1px solid #eee">
+        <div style="font-size:10px;font-weight:700;color:#999;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">Bill To</div>
+        <div style="font-size:17px;font-weight:700;color:#111;margin-bottom:4px">${m ? m.name : p.memberName}</div>
+        ${m ? `<div style="font-size:12px;color:#555;margin-bottom:2px">&#128222; ${m.phone}</div>` : ''}
+        ${m && m.email ? `<div style="font-size:12px;color:#555;margin-bottom:2px">&#9993; ${m.email}</div>` : ''}
+        ${m ? `<div style="font-size:12px;color:#888;margin-top:4px">Member ID: <strong>${m.id}</strong></div>` : ''}
+      </div>
+      <div style="padding:22px 28px">
+        <div style="font-size:10px;font-weight:700;color:#999;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">Membership Details</div>
+        ${p.planName ? `<div style="font-size:14px;font-weight:600;color:#111;margin-bottom:4px">${p.planName}</div>` : ''}
+        ${p.date     ? `<div style="font-size:12px;color:#555">From: <strong>${fmtDate(p.date)}</strong></div>` : ''}
+        ${p.expiryDate ? `<div style="font-size:12px;color:#555">Valid Till: <strong style="color:#22c55e">${fmtDate(p.expiryDate)}</strong></div>` : ''}
+        <div style="font-size:12px;color:#555;margin-top:4px">Mode: <strong>${p.mode}</strong></div>
+      </div>
+    </div>
+
+    <!-- Items table -->
+    <div style="padding:24px 28px">
+      <table style="width:100%;border-collapse:collapse">
         <thead>
-          <tr style="background:#f8f8f8">
-            <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#666;border:1px solid #eee;font-weight:700">Description</th>
-            <th style="padding:10px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:#666;border:1px solid #eee;font-weight:700">Amount</th>
+          <tr style="background:#f7f7f7">
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:0.8px;border-bottom:2px solid #eee">Description</th>
+            <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:0.8px;border-bottom:2px solid #eee;width:130px">Amount</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td style="padding:12px;border:1px solid #eee;font-size:13px">${p.planName || 'Gym Membership'} ${p.note ? `<span style="color:#888;font-size:12px">\u00b7 ${p.note}</span>` : ''}</td>
-            <td style="padding:12px;text-align:right;font-weight:700;border:1px solid #eee;font-size:13px">\u20b9${Number(p.amount).toLocaleString('en-IN')}</td>
+            <td style="padding:14px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0">
+              ${p.planName || 'Gym Membership'}
+              ${p.note ? `<div style="font-size:11px;color:#888;margin-top:3px">${p.note}</div>` : ''}
+            </td>
+            <td style="padding:14px;text-align:right;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0">&#8377;${planAmt.toLocaleString('en-IN')}</td>
           </tr>
         </tbody>
         <tfoot>
-          <tr style="background:#fff5f5">
-            <td style="padding:10px 12px;text-align:right;font-weight:700;font-size:14px;border:1px solid #eee">Total Paid</td>
-            <td style="padding:10px 12px;text-align:right;font-weight:900;font-size:20px;color:#E31E24;border:1px solid #eee">\u20b9${Number(p.amount).toLocaleString('en-IN')}</td>
-          </tr>
+          ${discount > 0 ? `
           <tr>
-            <td style="padding:7px 12px;font-size:12px;color:#666;border:1px solid #eee">Payment Mode</td>
-            <td style="padding:7px 12px;text-align:right;font-size:12px;color:#666;border:1px solid #eee">${p.mode}</td>
+            <td style="padding:8px 14px;text-align:right;font-size:12px;color:#888;border-bottom:1px solid #f0f0f0">Discount</td>
+            <td style="padding:8px 14px;text-align:right;font-size:12px;color:#22c55e;border-bottom:1px solid #f0f0f0">- &#8377;${discount.toLocaleString('en-IN')}</td>
+          </tr>` : ''}
+          <tr>
+            <td style="padding:10px 14px;text-align:right;font-size:13px;font-weight:600;color:#444;border-bottom:1px solid #eee">Amount Paid</td>
+            <td style="padding:10px 14px;text-align:right;font-size:16px;font-weight:800;color:#22c55e;border-bottom:1px solid #eee">&#8377;${paid.toLocaleString('en-IN')}</td>
+          </tr>
+          ${due > 0 ? `
+          <tr style="background:#fff8f0">
+            <td style="padding:10px 14px;text-align:right;font-size:13px;font-weight:600;color:#f59e0b;border-bottom:1px solid #eee">Balance Due</td>
+            <td style="padding:10px 14px;text-align:right;font-size:16px;font-weight:800;color:#f59e0b;border-bottom:1px solid #eee">&#8377;${due.toLocaleString('en-IN')}</td>
+          </tr>` : ''}
+          <tr style="background:#E31E24">
+            <td style="padding:12px 14px;text-align:right;font-size:13px;font-weight:700;color:#fff">Total Plan Value</td>
+            <td style="padding:12px 14px;text-align:right;font-size:20px;font-weight:900;color:#fff">&#8377;${planAmt.toLocaleString('en-IN')}</td>
           </tr>
         </tfoot>
       </table>
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;padding-top:14px;border-top:1px solid #eee">
-        <div style="font-size:11px;color:#888;font-style:italic">${gs.tagline || 'Thank you for choosing us!'}</div>
-        <div style="text-align:right">
-          <div style="font-size:10px;color:#aaa;margin-bottom:24px">Authorized Signature</div>
-          ${gs.signature ? `<div style="font-size:13px;font-weight:600;border-top:1px solid #ccc;padding-top:4px">${gs.signature}</div>` : ''}
-        </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:20px 28px;background:#fafafa;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px">
+      <div>
+        <div style="font-size:12px;color:#888;font-style:italic;margin-bottom:6px">${gs.tagline || 'Thank you for choosing us!'}</div>
+        <div style="font-size:10px;color:#bbb">Generated on ${new Date().toLocaleString('en-IN')}</div>
       </div>
-    </div>`;
-  openModal('invoiceModal');
+      <div style="text-align:center">
+        <div style="height:40px;border-bottom:1px solid #aaa;min-width:140px;margin-bottom:4px"></div>
+        <div style="font-size:11px;color:#888">Authorized Signature</div>
+        ${gs.signature ? `<div style="font-size:12px;font-weight:600;color:#444;margin-top:2px">${gs.signature}</div>` : ''}
+      </div>
+    </div>
+
+  </div>`;
 }
 
 function printInvoice() {
@@ -2663,24 +2742,82 @@ function printInvoice() {
   pa.style.display = 'none';
 }
 
-function shareInvoiceWA() {
+async function downloadInvoiceImage() {
+  const el = document.getElementById('invoiceContent');
+  if (!el) return;
+  if (typeof html2canvas === 'undefined') { toast('Image library not loaded yet, try again','warning'); return; }
+  showLoader(true);
+  try {
+    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const link = document.createElement('a');
+    const p = S.payments.find(x => x.id === _invoicePayId);
+    link.download = `receipt_${p ? p.receiptNo : 'invoice'}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast('Invoice downloaded!', 'success');
+  } catch(e) {
+    toast('Download failed: ' + e.message, 'error');
+  } finally {
+    showLoader(false);
+  }
+}
+
+async function shareInvoiceWA() {
   if (!_invoicePayId) return;
   const p = S.payments.find(x => x.id === _invoicePayId);
   if (!p) return;
   const m = getMember(p.memberId);
-  const gymName = getGymName();
+  const el = document.getElementById('invoiceContent');
+
+  // Try image share via Web Share API (works on mobile Chrome/Safari)
+  if (el && typeof html2canvas !== 'undefined' && navigator.share && navigator.canShare) {
+    showLoader(true);
+    try {
+      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      canvas.toBlob(async blob => {
+        const file = new File([blob], `receipt_${p.receiptNo}.png`, { type: 'image/png' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: `Receipt ${p.receiptNo}`, text: `Receipt from ${getGymName()}` });
+          toast('Invoice shared!', 'success');
+        } else {
+          // Fallback: download + open WA
+          const link = document.createElement('a');
+          link.href = canvas.toDataURL('image/png');
+          link.download = `receipt_${p.receiptNo}.png`;
+          link.click();
+          setTimeout(() => sendWA_receipt(p.id), 600);
+          toast('Image downloaded. Opening WhatsApp…', 'info');
+        }
+        showLoader(false);
+      }, 'image/png');
+      return;
+    } catch(e) {
+      showLoader(false);
+    }
+  }
+
+  // Desktop fallback: formatted text via WhatsApp
+  const rx  = S.receivables.find(r => r.relatedPayId === p.id && r.status === 'pending');
+  const due = rx ? rx.amount : 0;
   const msg =
-    `\ud83e\uddfe *RECEIPT \u2014 ${gymName}*\n\n` +
+    `🧾 *RECEIPT — ${getGymName()}*\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
     `Receipt No: *${p.receiptNo}*\n` +
-    `Date: ${fmtDate(p.date)}\n\n` +
+    `Date: ${fmtDate(p.date)}\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
     `*Member:* ${m ? m.name : p.memberName}\n` +
-    (m ? `*Phone:* ${m.phone}\n*Member ID:* ${m.id}\n` : '') +
-    `\n*Plan:* ${p.planName || '\u2014'}\n` +
-    `*Amount Paid:* \u20b9${Number(p.amount).toLocaleString('en-IN')}\n` +
-    `*Payment Mode:* ${p.mode}\n` +
+    (m ? `*ID:* ${m.id} | *Phone:* ${m.phone}\n` : '') +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    (p.planName ? `*Plan:* ${p.planName}\n` : '') +
     (p.expiryDate ? `*Valid Till:* ${fmtDate(p.expiryDate)}\n` : '') +
-    `\n${S.gymSettings.tagline || 'Thank you for choosing us!'}\n` +
-    `\u260e\ufe0f ${getGymPhone()}`;
+    `*Mode:* ${p.mode}\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `*Amount Paid:* ₹${Number(p.amount).toLocaleString('en-IN')}\n` +
+    (due > 0 ? `*Balance Due:* ₹${Number(due).toLocaleString('en-IN')}\n` : '') +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `${S.gymSettings.tagline || 'Thank you for choosing us!'}\n` +
+    `📞 ${getGymPhone()}`;
+
   const phone = m ? m.phone : '';
   if (phone) openWA(phone, msg);
   else window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
@@ -2952,7 +3089,8 @@ Object.assign(window, {
   openPlanModal, savePlan, deletePlan,
   openPaymentModal, savePayment, deletePayment, openRenewalModal, onPayMemberChange, onPayPlanChange, exportCSV,
   renderReceivables, openCollectModal, saveCollect, deleteReceivable,
-  openInvoiceModal, printInvoice, shareInvoiceWA,
+  openInvoiceModal, printInvoice, downloadInvoiceImage, shareInvoiceWA,
+  updateMemberDue,
   openEnquiryModal, saveEnquiry, updateEnqStatus, deleteEnquiry,
   openStaffModal, saveStaff, deleteStaff,
   renderMembers, renderPayments, renderEnquiries,
