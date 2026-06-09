@@ -1611,8 +1611,8 @@ function renderDashboard() {
   const rp = [...S.payments].reverse().slice(0,5);
   document.getElementById('dashRecentPayments').innerHTML = rp.length === 0
     ? `<div class="empty-state" style="padding:28px"><div class="empty-icon">💰</div><div>No payments yet</div></div>`
-    : `<table><thead><tr><th>Member</th><th>Amount</th><th>Mode</th><th>Date</th></tr></thead><tbody>${rp.map(p=>
-        `<tr><td><strong>${p.memberName}</strong></td><td style="color:var(--success);font-weight:700">${fmtMoney(p.amount)}</td><td class="td-muted">${p.mode}</td><td class="td-muted">${fmtDate(p.date)}</td></tr>`
+    : `<table><thead><tr><th>Member</th><th>Amount</th><th>Mode</th><th>Date</th><th></th></tr></thead><tbody>${rp.map(p=>
+        `<tr><td><strong>${p.memberName}</strong></td><td style="color:var(--success);font-weight:700">${fmtMoney(p.amount)}</td><td class="td-muted">${p.mode}</td><td class="td-muted">${fmtDate(p.date)}</td><td><button class="btn btn-icon btn-sm" title="View Invoice" onclick="openInvoiceModal('${p.id}')">🧾</button></td></tr>`
       ).join('')}</tbody></table>`;
 
   // Pending Dues on dashboard
@@ -1686,9 +1686,10 @@ function renderMembers() {
           <td class="td-muted">${fmtDate(m.expiryDate)}</td>
           <td>${statusBadge(st)}</td>
           <td><div class="actions-group">
-            <button class="btn btn-icon btn-sm" title="View" onclick="openProfile('${m.id}')">👁️</button>
+            <button class="btn btn-icon btn-sm" title="View Profile" onclick="openProfile('${m.id}')">👁️</button>
             ${['admin','receptionist'].includes(currentUserRole) ? `<button class="btn btn-icon btn-sm" title="Edit" onclick="openMemberModal('${m.id}')">✏️</button>` : ''}
             ${['admin','receptionist'].includes(currentUserRole) ? `<button class="btn btn-icon btn-sm" title="Delete" onclick="deleteMember('${m.id}')" style="color:var(--danger)">🗑️</button>` : ''}
+            ${(()=>{ const lp=getLastPaymentId(m.id); return lp?`<button class="btn btn-icon btn-sm" title="Last Invoice" onclick="openInvoiceModal('${lp}')">🧾</button>`:''; })()}
             <button class="btn btn-whatsapp btn-sm" title="WhatsApp" onclick="sendWA_expiry('${m.id}')">💬</button>
           </div></td>
         </tr>`;
@@ -2211,6 +2212,12 @@ function exportCSV() {
 // ─────────────────────────────────────────────────────────────────
 //  RECEIVABLES
 // ─────────────────────────────────────────────────────────────────
+function getLastPaymentId(memberId) {
+  const pays = S.payments.filter(p => p.memberId === memberId);
+  if (!pays.length) return null;
+  return pays.reduce((a,b) => (a.date||'') >= (b.date||'') ? a : b).id;
+}
+
 function renderReceivables() {
   const pending = S.receivables.filter(r => r.status === 'pending');
   const badge = document.getElementById('receivablesBadge');
@@ -2232,6 +2239,7 @@ function renderReceivables() {
         <td class="pending-due-amt">${fmtMoney(r.amount)}</td>
         <td><div class="actions-group">
           <button class="btn btn-success btn-sm" onclick="openCollectModal('${r.id}')">💰 Collect</button>
+          ${r.relatedPayId ? `<button class="btn btn-icon btn-sm" title="View Invoice" onclick="openInvoiceModal('${r.relatedPayId}')">🧾</button>` : ''}
           <button class="btn btn-whatsapp btn-sm" onclick="sendWA_due('${r.id}')">💬</button>
           <button class="btn btn-icon btn-sm" onclick="deleteReceivable('${r.id}')" style="color:var(--danger)">🗑️</button>
         </div></td>
