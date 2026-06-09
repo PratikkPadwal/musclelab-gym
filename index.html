@@ -2803,15 +2803,28 @@ async function renderUsersAdmin() {
     wrap.innerHTML = `
       <div class="table-wrapper">
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>${users.map(u => `
             <tr>
               <td><strong>${u.name || '—'}</strong></td>
               <td class="td-muted">${u.email || '—'}</td>
-              <td>${roleTag(u.role)}</td>
+              <td>
+                ${u.uid === currentUser?.uid
+                  ? roleTag(u.role)
+                  : `<select class="filter-select" style="padding:4px 8px;font-size:12px" onchange="editUserRole('${u.docId}',this.value)">
+                      ${['admin','receptionist','trainer'].map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${r}</option>`).join('')}
+                    </select>`
+                }
+              </td>
+              <td>${u.active === false
+                ? `<span class="badge badge-red">Revoked</span>`
+                : `<span class="badge badge-green">Active</span>`
+              }</td>
               <td>${u.uid === currentUser?.uid
                 ? `<span style="color:var(--text2);font-size:12px">(you)</span>`
-                : `<button class="btn btn-danger btn-sm" onclick="deleteAppUser('${u.docId}')">🗑️ Remove</button>`
+                : u.active === false
+                  ? `<button class="btn btn-success btn-sm" onclick="restoreUserAccess('${u.docId}')">✅ Restore</button>`
+                  : `<button class="btn btn-danger btn-sm" onclick="deleteAppUser('${u.docId}')">🔒 Revoke</button>`
               }</td>
             </tr>`).join('')}
           </tbody>
@@ -2843,19 +2856,41 @@ async function createAppUser() {
     renderUsersAdmin();
   } catch(err) {
     if (err.code === 'auth/email-already-in-use') {
-      // Check if this email has a revoked Firestore doc — if so, re-activate it
       try {
         const snap = await getDocs(collection(db, 'users'));
         const existing = snap.docs.find(d => d.data().email === email);
-        if (existing && existing.data().active === false) {
+        if (existing) {
+          // Doc exists — just restore/update it
           await updateDoc(doc(db, 'users', existing.id), { active: true, role, name });
-          const idx = S.receivables; // unused, just placeholder
           toast(`Access restored for "${name}" as ${role}!`, 'success');
+          document.getElementById('newUserName').value  = '';
+          document.getElementById('newUserEmail').value = '';
+          document.getElementById('newUserPass').value  = '';
+          document.getElementById('newUserRole').value  = 'receptionist';
           renderUsersAdmin();
           return;
         }
-      } catch(e2) {/* ignore */}
-      toast('This email is already an active user. Use the "🔒 Revoke / ✅ Restore" buttons or the Role dropdown to manage them.', 'warning');
+        // Doc was hard-deleted (old behaviour) but Auth account still exists.
+        // Try signing in with the password entered to recover the UID and re-link.
+        showLoader(true);
+        try {
+          const relinked = await signInWithEmailAndPassword(authAux, email, pass);
+          await setDoc(doc(db, 'users', relinked.user.uid), { uid: relinked.user.uid, name, email, role, active: true });
+          await signOut(authAux);
+          toast(`Account re-linked for "${name}" as ${role}!`, 'success');
+          document.getElementById('newUserName').value  = '';
+          document.getElementById('newUserEmail').value = '';
+          document.getElementById('newUserPass').value  = '';
+          document.getElementById('newUserRole').value  = 'receptionist';
+          renderUsersAdmin();
+          return;
+        } catch(signInErr) {
+          // Password entered doesn't match existing Auth account
+          toast('This email already has a Firebase account with a different password. Use "Forgot Password?" on the login page to reset it first, then try again.', 'warning');
+        }
+      } catch(e2) {
+        toast('Error: ' + e2.message, 'error');
+      }
     } else {
       toast('Error creating user: ' + err.message, 'error');
     }
