@@ -464,6 +464,16 @@
     /* ── SETUP SCREEN ────────────────────────────────────── */
     #setupPage { min-height:100vh;display:none;align-items:center;justify-content:center;background:var(--bg);background-image:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(227,30,36,0.10) 0%,transparent 60%); }
 
+    /* ── RECEIVABLES ─────────────────────────────────────── */
+    .pending-due-amt { color:var(--warning);font-weight:700; }
+
+    /* ── INVOICE PRINT ───────────────────────────────────── */
+    #invoicePrintArea { display:none; }
+    @media print {
+      body > *:not(#invoicePrintArea) { display:none !important; }
+      #invoicePrintArea { display:block !important;position:fixed;inset:0;background:#fff;z-index:99999;padding:32px;color:#000; }
+    }
+
     /* ── SETTINGS PAGE ───────────────────────────────────── */
     .settings-section { background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:20px; }
     .settings-section-title { font-size:15px;font-weight:700;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border); }
@@ -666,6 +676,14 @@
           </select>
         </div>
         <div class="card" style="padding:0"><div class="table-wrapper" id="paymentsTable"></div></div>
+        <!-- Pending Dues -->
+        <div style="margin-top:24px">
+          <div class="section-header" style="margin-bottom:14px">
+            <div><div class="section-title">💸 Pending Dues</div><div class="section-sub">Members with outstanding balance</div></div>
+            <span id="receivablesBadge" class="badge badge-orange">0</span>
+          </div>
+          <div class="card" style="padding:0"><div class="table-wrapper" id="receivablesTable"></div></div>
+        </div>
       </div>
 
       <!-- ─── ENQUIRIES ─────────────────────────── -->
@@ -718,8 +736,8 @@
         </div>
         <!-- Gym Settings -->
         <div class="settings-section">
-          <div class="settings-section-title">🏋️ Gym Settings</div>
-          <div class="form-grid" style="max-width:600px">
+          <div class="settings-section-title">🏋️ Gym &amp; Invoice Settings</div>
+          <div class="form-grid" style="max-width:700px">
             <div class="form-group">
               <label>Gym Name</label>
               <input type="text" id="settingsGymName" placeholder="MuscleLab Gym">
@@ -728,8 +746,21 @@
               <label>Gym Phone (for WhatsApp)</label>
               <input type="tel" id="settingsGymPhone" placeholder="e.g. 9876543210">
             </div>
+            <div class="form-group col-span-2">
+              <label>Gym Address (shown on invoices)</label>
+              <textarea id="settingsGymAddress" placeholder="Full address e.g. Shop 12, Main Market, City - 400001" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Invoice Tagline</label>
+              <input type="text" id="settingsInvoiceTagline" placeholder="e.g. Thank you for choosing us!">
+            </div>
+            <div class="form-group">
+              <label>Authorized By / Signature</label>
+              <input type="text" id="settingsSignature" placeholder="e.g. Owner Name or Manager">
+            </div>
           </div>
-          <button class="btn btn-primary" onclick="saveGymSettings()" style="margin-top:4px">💾 Save Gym Settings</button>
+          <button class="btn btn-primary" onclick="saveGymSettings()" style="margin-top:4px">💾 Save Settings</button>
+          <p style="font-size:11px;color:var(--text2);margin-top:8px">ℹ️ These settings sync across all devices.</p>
         </div>
         <!-- User Management (admin only) -->
         <div class="settings-section" id="userMgmtSection">
@@ -898,6 +929,10 @@
       </div>
       <div class="form-group"><label>Date *</label><input type="date" id="payDate"></div>
       <div class="form-group"><label>Note</label><input type="text" id="payNote" placeholder="Optional note"></div>
+      <div class="form-group">
+        <label>Amount Due / Pending (₹) <span style="color:var(--text2);font-weight:400;font-size:11px">(leave 0 if fully paid)</span></label>
+        <input type="number" id="payDue" placeholder="0 = fully paid" min="0" value="0">
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('paymentModal')">Cancel</button>
@@ -1003,6 +1038,43 @@
   </div>
 </div>
 
+<!-- INVOICE -->
+<div class="modal-overlay" id="invoiceModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">🧾 Invoice / Receipt</div>
+      <button class="modal-close" onclick="closeModal('invoiceModal')">&#10005;</button>
+    </div>
+    <div class="modal-body" id="invoiceBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('invoiceModal')">Close</button>
+      <button class="btn btn-whatsapp" onclick="shareInvoiceWA()">💬 Share via WhatsApp</button>
+      <button class="btn btn-primary" onclick="printInvoice()">🖨️ Print</button>
+    </div>
+  </div>
+</div>
+
+<!-- COLLECT DUE -->
+<div class="modal-overlay" id="collectModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">💰 Collect Pending Due</div>
+      <button class="modal-close" onclick="closeModal('collectModal')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div id="collectInfo" style="background:var(--bg3);border-radius:var(--radius);padding:14px;margin-bottom:16px;font-size:13px;line-height:1.8"></div>
+      <div class="form-group"><label>Amount Collecting (₹) *</label><input type="number" id="collectAmt" placeholder="Enter amount" min="1"></div>
+      <div class="form-group"><label>Payment Mode *</label><select id="collectMode"><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="Card">Card</option></select></div>
+      <div class="form-group"><label>Date *</label><input type="date" id="collectDate"></div>
+      <div class="form-group"><label>Note</label><input type="text" id="collectNote" placeholder="Optional note"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('collectModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCollect()">Record Collection</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONFIRM -->
 <div class="modal-overlay" id="confirmModal">
   <div class="modal modal-sm">
@@ -1026,6 +1098,9 @@
 
 <!-- TOAST -->
 <div id="toastContainer"></div>
+
+<!-- INVOICE PRINT AREA -->
+<div id="invoicePrintArea"></div>
 
 <!-- ══════════════════ SCRIPT ══════════════════ -->
 <script type="module">
@@ -1079,9 +1154,12 @@ function showLoader(show) {
 let currentUser     = null;
 let currentUserRole = null;
 let currentUserName = 'User';
+let _invoicePayId   = null;
+let _collectRxId    = null;
 
 const S = {
-  members: [], plans: [], payments: [], enquiries: [], staff: [],
+  members: [], plans: [], payments: [], enquiries: [], staff: [], receivables: [],
+  gymSettings: { name:'', phone:'', address:'', tagline:'', signature:'' },
   editMemberId: null, editPlanId: null, editEnqId: null, editStaffId: null,
   charts: {}
 };
@@ -1092,18 +1170,22 @@ const S = {
 async function load() {
   showLoader(true);
   try {
-    const [mSnap, plSnap, pySnap, eSnap, stSnap] = await Promise.all([
+    const [mSnap, plSnap, pySnap, eSnap, stSnap, rxSnap, gsSnap] = await Promise.all([
       getDocs(collection(db, 'members')),
       getDocs(collection(db, 'plans')),
       getDocs(collection(db, 'payments')),
       getDocs(collection(db, 'enquiries')),
       getDocs(collection(db, 'staff')),
+      getDocs(collection(db, 'receivables')),
+      getDoc(doc(db, 'settings', 'gym')),
     ]);
-    S.members   = mSnap.docs.map(d  => ({ ...d.data(), id: d.id }));
-    S.plans     = plSnap.docs.map(d => ({ ...d.data(), id: d.id }));
-    S.payments  = pySnap.docs.map(d => ({ ...d.data(), id: d.id }));
-    S.enquiries = eSnap.docs.map(d  => ({ ...d.data(), id: d.id }));
-    S.staff     = stSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+    S.members     = mSnap.docs.map(d  => ({ ...d.data(), id: d.id }));
+    S.plans       = plSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+    S.payments    = pySnap.docs.map(d => ({ ...d.data(), id: d.id }));
+    S.enquiries   = eSnap.docs.map(d  => ({ ...d.data(), id: d.id }));
+    S.staff       = stSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+    S.receivables = rxSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+    if (gsSnap.exists()) Object.assign(S.gymSettings, gsSnap.data());
   } catch(e) {
     toast('Failed to load data: ' + e.message, 'error');
   } finally {
@@ -1246,6 +1328,12 @@ async function fetchUserRole(uid) {
     const userDoc = await getDoc(doc(db, 'users', uid));
     if (userDoc.exists()) {
       const data = userDoc.data();
+      if (data.active === false) {
+        await signOut(auth);
+        showLoginPage();
+        setTimeout(() => toast('Your access has been revoked. Contact admin.', 'error'), 600);
+        return;
+      }
       currentUserRole = data.role || 'trainer';
       currentUserName = data.name || currentUser?.email || 'User';
     } else {
@@ -1924,11 +2012,13 @@ function renderPayments() {
         <td class="td-muted">${p.planName||'—'}</td>
         <td class="td-muted" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.note||'—'}</td>
         <td><div class="actions-group">
+          <button class="btn btn-icon btn-sm" title="Invoice" onclick="openInvoiceModal('${p.id}')">🧾</button>
           <button class="btn btn-whatsapp btn-sm" title="Send Receipt via WhatsApp" onclick="sendWA_receipt('${p.id}')">💬</button>
           ${currentUserRole === 'admin' ? `<button class="btn btn-icon btn-sm" title="Delete" onclick="deletePayment('${p.id}')" style="color:var(--danger)">🗑️</button>` : ''}
         </div></td>
       </tr>`).join('')}</tbody>
     </table>`;
+  renderReceivables();
 }
 
 function openPaymentModal(prefillMemberId) {
@@ -1940,6 +2030,7 @@ function openPaymentModal(prefillMemberId) {
   document.getElementById('payMode').value = 'Cash';
   document.getElementById('payDate').value = todayStr();
   document.getElementById('payNote').value = '';
+  document.getElementById('payDue').value = '0';
   if (prefillMemberId) {
     document.getElementById('payMember').value = prefillMemberId;
     onPayMemberChange();
@@ -1956,7 +2047,10 @@ function onPayMemberChange() {
 
 function onPayPlanChange() {
   const plan = getPlan(document.getElementById('payPlan').value);
-  if (plan) document.getElementById('payAmt').value = plan.price;
+  if (plan) {
+    document.getElementById('payAmt').value = plan.price;
+    document.getElementById('payDue').value = '0';
+  }
 }
 
 async function savePayment() {
@@ -1980,6 +2074,7 @@ async function savePayment() {
     planId: planId||'', planName: plan ? plan.name : '',
     date, expiryDate, note: document.getElementById('payNote').value.trim(),
   };
+  const amtDue = parseFloat(document.getElementById('payDue').value || 0) || 0;
   showLoader(true);
   try {
     S.payments.push(payment);
@@ -1994,8 +2089,21 @@ async function savePayment() {
       }
       await fsUpdate('members', memberId, { planId, planName: plan.name, expiryDate });
     }
+    // Record pending due if partial payment
+    if (amtDue > 0) {
+      const rx = {
+        id: uid('rx'), memberId, memberName: member ? member.name : '',
+        phone: member ? member.phone : '',
+        amount: amtDue,
+        description: `Balance for ${plan ? plan.name : 'membership'} (${payment.receiptNo})`,
+        relatedReceiptNo: payment.receiptNo, relatedPayId: payment.id,
+        createdAt: todayStr(), status: 'pending',
+      };
+      S.receivables.push(rx);
+      await fsSet('receivables', rx.id, rx);
+    }
     closeModal('paymentModal');
-    toast(`Payment ${payment.receiptNo} recorded!`, 'success');
+    toast(`Payment ${payment.receiptNo} recorded!${amtDue>0?' Due: '+fmtMoney(amtDue):''}`, 'success');
     renderPage('payments');
   } catch(e) {
     toast('Error saving payment: ' + e.message, 'error');
@@ -2035,6 +2143,108 @@ function exportCSV() {
   a.click();
   URL.revokeObjectURL(a.href);
   toast('Payments exported!','success');
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  RECEIVABLES
+// ─────────────────────────────────────────────────────────────────
+function renderReceivables() {
+  const pending = S.receivables.filter(r => r.status === 'pending');
+  const badge = document.getElementById('receivablesBadge');
+  if (badge) badge.textContent = pending.length;
+  const wrap = document.getElementById('receivablesTable');
+  if (!wrap) return;
+  if (!pending.length) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:28px"><div class="empty-icon">✅</div><div class="empty-title">No Pending Dues</div><div class="empty-text">All payments are fully collected.</div></div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Date</th><th>Member</th><th>Phone</th><th>Description</th><th>Amount Due</th><th>Actions</th></tr></thead>
+      <tbody>${pending.map(r=>`<tr>
+        <td class="td-muted">${fmtDate(r.createdAt)}</td>
+        <td><strong>${r.memberName}</strong></td>
+        <td class="td-muted">${r.phone}</td>
+        <td class="td-muted">${r.description}</td>
+        <td class="pending-due-amt">${fmtMoney(r.amount)}</td>
+        <td><div class="actions-group">
+          <button class="btn btn-success btn-sm" onclick="openCollectModal('${r.id}')">💰 Collect</button>
+          <button class="btn btn-whatsapp btn-sm" onclick="sendWA_due('${r.id}')">💬</button>
+          <button class="btn btn-icon btn-sm" onclick="deleteReceivable('${r.id}')" style="color:var(--danger)">🗑️</button>
+        </div></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+function openCollectModal(rxId) {
+  _collectRxId = rxId;
+  const rx = S.receivables.find(r => r.id === rxId);
+  if (!rx) return;
+  document.getElementById('collectInfo').innerHTML =
+    `<strong>${rx.memberName}</strong> &nbsp;·&nbsp; ${rx.phone}<br>
+     <span style="color:var(--text2)">${rx.description}</span><br>
+     <strong style="color:var(--warning)">${fmtMoney(rx.amount)} outstanding</strong>`;
+  document.getElementById('collectAmt').value = rx.amount;
+  document.getElementById('collectMode').value = 'Cash';
+  document.getElementById('collectDate').value = todayStr();
+  document.getElementById('collectNote').value = '';
+  openModal('collectModal');
+}
+
+async function saveCollect() {
+  const rx = S.receivables.find(r => r.id === _collectRxId);
+  if (!rx) return;
+  const amt  = parseFloat(document.getElementById('collectAmt').value);
+  const mode = document.getElementById('collectMode').value;
+  const date = document.getElementById('collectDate').value;
+  if (!amt || amt <= 0) { toast('Enter valid amount','error'); return; }
+  if (!date) { toast('Select date','error'); return; }
+  showLoader(true);
+  try {
+    const payment = {
+      id: uid('pay'), receiptNo: nextReceiptNo(),
+      memberId: rx.memberId, memberName: rx.memberName,
+      amount: amt, mode, planId: '', planName: '',
+      date, expiryDate: '',
+      note: `Due collection: ${rx.description}${document.getElementById('collectNote').value.trim() ? ' · ' + document.getElementById('collectNote').value.trim() : ''}`,
+    };
+    S.payments.push(payment);
+    await fsSet('payments', payment.id, payment);
+    const remaining = Math.max(0, rx.amount - amt);
+    if (remaining <= 0) {
+      await fsUpdate('receivables', rx.id, { status: 'collected', collectedAt: todayStr() });
+      const idx = S.receivables.findIndex(r => r.id === rx.id);
+      if (idx !== -1) S.receivables[idx].status = 'collected';
+      toast(`Due fully collected! Receipt ${payment.receiptNo}`, 'success');
+    } else {
+      await fsUpdate('receivables', rx.id, { amount: remaining });
+      const idx = S.receivables.findIndex(r => r.id === rx.id);
+      if (idx !== -1) S.receivables[idx].amount = remaining;
+      toast(`Collected ${fmtMoney(amt)}. Remaining due: ${fmtMoney(remaining)}`, 'info');
+    }
+    closeModal('collectModal');
+    renderPage('payments');
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    showLoader(false);
+  }
+}
+
+function deleteReceivable(id) {
+  confirm2('Remove Due', 'Remove this pending due record?', async () => {
+    showLoader(true);
+    try {
+      await fsDelete('receivables', id);
+      S.receivables = S.receivables.filter(r => r.id !== id);
+      toast('Due removed','success');
+      renderReceivables();
+    } catch(e) {
+      toast('Error: ' + e.message, 'error');
+    } finally {
+      showLoader(false);
+    }
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -2371,9 +2581,116 @@ function renderAnalytics() {
 }
 
 // ─────────────────────────────────────────────────────────────────
+//  INVOICE
+// ─────────────────────────────────────────────────────────────────
+function openInvoiceModal(payId) {
+  _invoicePayId = payId;
+  const p = S.payments.find(x => x.id === payId);
+  if (!p) return;
+  const m  = getMember(p.memberId);
+  const gs = S.gymSettings;
+  const gymName = getGymName();
+  document.getElementById('invoiceBody').innerHTML = `
+    <div id="invoiceContent" style="font-family:'Inter',sans-serif;color:#111;background:#fff;padding:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #E31E24;padding-bottom:16px;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-size:26px;font-weight:900;letter-spacing:-1px;color:#111">${gymName}</div>
+          ${gs.address ? `<div style="font-size:11px;color:#666;margin-top:3px;max-width:260px;line-height:1.4">${gs.address}</div>` : ''}
+          ${gs.phone ? `<div style="font-size:11px;color:#666">\u260e\ufe0f ${gs.phone}</div>` : ''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:20px;font-weight:800;color:#E31E24;letter-spacing:1px">RECEIPT</div>
+          <div style="font-size:13px;font-family:monospace;color:#444;font-weight:700">${p.receiptNo}</div>
+          <div style="font-size:12px;color:#888">${fmtDate(p.date)}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:#999;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Bill To</div>
+          <div style="font-weight:700;font-size:15px">${m ? m.name : p.memberName}</div>
+          ${m ? `<div style="font-size:12px;color:#555">\ud83d\udcde ${m.phone}</div>` : ''}
+          ${m && m.email ? `<div style="font-size:12px;color:#555">\ud83d\udce7 ${m.email}</div>` : ''}
+          ${m ? `<div style="font-size:12px;color:#555">ID: ${m.id}</div>` : ''}
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:#999;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Membership</div>
+          ${p.planName ? `<div style="font-size:12px;color:#444">Plan: <strong>${p.planName}</strong></div>` : ''}
+          ${p.expiryDate ? `<div style="font-size:12px;color:#444">Valid Till: <strong>${fmtDate(p.expiryDate)}</strong></div>` : ''}
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+        <thead>
+          <tr style="background:#f8f8f8">
+            <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#666;border:1px solid #eee;font-weight:700">Description</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:#666;border:1px solid #eee;font-weight:700">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:12px;border:1px solid #eee;font-size:13px">${p.planName || 'Gym Membership'} ${p.note ? `<span style="color:#888;font-size:12px">\u00b7 ${p.note}</span>` : ''}</td>
+            <td style="padding:12px;text-align:right;font-weight:700;border:1px solid #eee;font-size:13px">\u20b9${Number(p.amount).toLocaleString('en-IN')}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr style="background:#fff5f5">
+            <td style="padding:10px 12px;text-align:right;font-weight:700;font-size:14px;border:1px solid #eee">Total Paid</td>
+            <td style="padding:10px 12px;text-align:right;font-weight:900;font-size:20px;color:#E31E24;border:1px solid #eee">\u20b9${Number(p.amount).toLocaleString('en-IN')}</td>
+          </tr>
+          <tr>
+            <td style="padding:7px 12px;font-size:12px;color:#666;border:1px solid #eee">Payment Mode</td>
+            <td style="padding:7px 12px;text-align:right;font-size:12px;color:#666;border:1px solid #eee">${p.mode}</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;padding-top:14px;border-top:1px solid #eee">
+        <div style="font-size:11px;color:#888;font-style:italic">${gs.tagline || 'Thank you for choosing us!'}</div>
+        <div style="text-align:right">
+          <div style="font-size:10px;color:#aaa;margin-bottom:24px">Authorized Signature</div>
+          ${gs.signature ? `<div style="font-size:13px;font-weight:600;border-top:1px solid #ccc;padding-top:4px">${gs.signature}</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  openModal('invoiceModal');
+}
+
+function printInvoice() {
+  const content = document.getElementById('invoiceContent');
+  if (!content) return;
+  const pa = document.getElementById('invoicePrintArea');
+  pa.innerHTML = content.outerHTML;
+  pa.style.display = 'block';
+  window.print();
+  pa.style.display = 'none';
+}
+
+function shareInvoiceWA() {
+  if (!_invoicePayId) return;
+  const p = S.payments.find(x => x.id === _invoicePayId);
+  if (!p) return;
+  const m = getMember(p.memberId);
+  const gymName = getGymName();
+  const msg =
+    `\ud83e\uddfe *RECEIPT \u2014 ${gymName}*\n\n` +
+    `Receipt No: *${p.receiptNo}*\n` +
+    `Date: ${fmtDate(p.date)}\n\n` +
+    `*Member:* ${m ? m.name : p.memberName}\n` +
+    (m ? `*Phone:* ${m.phone}\n*Member ID:* ${m.id}\n` : '') +
+    `\n*Plan:* ${p.planName || '\u2014'}\n` +
+    `*Amount Paid:* \u20b9${Number(p.amount).toLocaleString('en-IN')}\n` +
+    `*Payment Mode:* ${p.mode}\n` +
+    (p.expiryDate ? `*Valid Till:* ${fmtDate(p.expiryDate)}\n` : '') +
+    `\n${S.gymSettings.tagline || 'Thank you for choosing us!'}\n` +
+    `\u260e\ufe0f ${getGymPhone()}`;
+  const phone = m ? m.phone : '';
+  if (phone) openWA(phone, msg);
+  else window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// ─────────────────────────────────────────────────────────────────
 //  WHATSAPP
 // ─────────────────────────────────────────────────────────────────
-function getGymPhone() { return localStorage.getItem('mlg_gym_phone') || '9876543210'; }
+function getGymPhone() { return S.gymSettings.phone || localStorage.getItem('mlg_gym_phone') || '9876543210'; }
+function getGymName()  { return S.gymSettings.name  || localStorage.getItem('mlg_gym_name')  || 'MuscleLab Gym'; }
 
 function openWA(phone, msg) {
   const clean = phone.replace(/\D/g,'');
@@ -2385,7 +2702,7 @@ function sendWA_expiry(memberId) {
   const m = getMember(memberId);
   if (!m) return;
   openWA(m.phone,
-    `Hi ${m.name}! Your MuscleLab membership expires on ${fmtDate(m.expiryDate)}. Renew now to continue your fitness journey! Contact us: ${getGymPhone()} — MuscleLab Gym`
+    `Hi ${m.name}! Your MuscleLab membership expires on ${fmtDate(m.expiryDate)}. Renew now to continue your fitness journey! Contact us: ${getGymPhone()} — ${getGymName()}`
   );
 }
 
@@ -2395,7 +2712,7 @@ function sendWA_receipt(payId) {
   const m = getMember(p.memberId);
   if (!m) return;
   openWA(m.phone,
-    `Hi ${m.name}! Payment of ₹${p.amount} received for ${p.planName||'membership'}. Valid till ${fmtDate(p.expiryDate)}. Thank you! — MuscleLab Gym (${getGymPhone()})`
+    `Hi ${m.name}! Payment of ₹${p.amount} received for ${p.planName||'membership'}. Valid till ${fmtDate(p.expiryDate)}. Thank you! — ${getGymName()} (☎️ ${getGymPhone()})`
   );
 }
 
@@ -2403,8 +2720,14 @@ function sendWA_enquiry(enqId) {
   const e = S.enquiries.find(x=>x.id===enqId);
   if (!e) return;
   openWA(e.phone,
-    `Hi ${e.name}! Thank you for your interest in MuscleLab Gym. We'd love to help you start your fitness journey! Please call us at ${getGymPhone()} for more details. — MuscleLab Gym`
+    `Hi ${e.name}! Thank you for your interest in ${getGymName()}. We'd love to help you start your fitness journey! Please call us at ${getGymPhone()} for more details. — ${getGymName()}`
   );
+}
+
+function sendWA_due(rxId) {
+  const rx = S.receivables.find(r => r.id === rxId);
+  if (!rx) return;
+  openWA(rx.phone, `Hi ${rx.memberName}! You have a pending due of ${fmtMoney(rx.amount)} for ${rx.description}. Please clear it at your earliest convenience. — ${getGymName()} (☎️ ${getGymPhone()})`);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -2426,8 +2749,12 @@ function saveSettings() {
 }
 
 function renderSettings() {
-  document.getElementById('settingsGymName').value  = localStorage.getItem('mlg_gym_name')  || '';
-  document.getElementById('settingsGymPhone').value = localStorage.getItem('mlg_gym_phone') || '';
+  const gs = S.gymSettings;
+  document.getElementById('settingsGymName').value        = gs.name      || '';
+  document.getElementById('settingsGymPhone').value       = gs.phone     || '';
+  document.getElementById('settingsGymAddress').value     = gs.address   || '';
+  document.getElementById('settingsInvoiceTagline').value = gs.tagline   || '';
+  document.getElementById('settingsSignature').value      = gs.signature || '';
   if (currentUserRole === 'admin') {
     document.getElementById('userMgmtSection').style.display = '';
     renderUsersAdmin();
@@ -2436,12 +2763,26 @@ function renderSettings() {
   }
 }
 
-function saveGymSettings() {
-  const name  = document.getElementById('settingsGymName').value.trim();
-  const phone = document.getElementById('settingsGymPhone').value.trim();
-  if (name)  localStorage.setItem('mlg_gym_name',  name);
-  if (phone) localStorage.setItem('mlg_gym_phone', phone);
-  toast('Settings saved!', 'success');
+async function saveGymSettings() {
+  const gs = {
+    name:      document.getElementById('settingsGymName').value.trim(),
+    phone:     document.getElementById('settingsGymPhone').value.trim(),
+    address:   document.getElementById('settingsGymAddress').value.trim(),
+    tagline:   document.getElementById('settingsInvoiceTagline').value.trim(),
+    signature: document.getElementById('settingsSignature').value.trim(),
+  };
+  showLoader(true);
+  try {
+    await setDoc(doc(db, 'settings', 'gym'), gs);
+    Object.assign(S.gymSettings, gs);
+    if (gs.phone) localStorage.setItem('mlg_gym_phone', gs.phone);
+    if (gs.name)  localStorage.setItem('mlg_gym_name',  gs.name);
+    toast('Settings saved and synced!', 'success');
+  } catch(e) {
+    toast('Error saving settings: ' + e.message, 'error');
+  } finally {
+    showLoader(false);
+  }
 }
 
 async function renderUsersAdmin() {
@@ -2491,10 +2832,9 @@ async function createAppUser() {
   if (!pass||pass.length<6){ toast('Password must be at least 6 characters','error'); return; }
   showLoader(true);
   try {
-    // Use secondary auth instance so the admin stays logged in
     const cred = await createUserWithEmailAndPassword(authAux, email, pass);
-    await setDoc(doc(db, 'users', cred.user.uid), { uid: cred.user.uid, name, email, role });
-    await signOut(authAux); // sign out from secondary instance immediately
+    await setDoc(doc(db, 'users', cred.user.uid), { uid: cred.user.uid, name, email, role, active: true });
+    await signOut(authAux);
     toast(`User "${name}" created as ${role}!`, 'success');
     document.getElementById('newUserName').value  = '';
     document.getElementById('newUserEmail').value = '';
@@ -2502,7 +2842,23 @@ async function createAppUser() {
     document.getElementById('newUserRole').value  = 'receptionist';
     renderUsersAdmin();
   } catch(err) {
-    toast('Error creating user: ' + err.message, 'error');
+    if (err.code === 'auth/email-already-in-use') {
+      // Check if this email has a revoked Firestore doc — if so, re-activate it
+      try {
+        const snap = await getDocs(collection(db, 'users'));
+        const existing = snap.docs.find(d => d.data().email === email);
+        if (existing && existing.data().active === false) {
+          await updateDoc(doc(db, 'users', existing.id), { active: true, role, name });
+          const idx = S.receivables; // unused, just placeholder
+          toast(`Access restored for "${name}" as ${role}!`, 'success');
+          renderUsersAdmin();
+          return;
+        }
+      } catch(e2) {/* ignore */}
+      toast('This email is already an active user. Use the "🔒 Revoke / ✅ Restore" buttons or the Role dropdown to manage them.', 'warning');
+    } else {
+      toast('Error creating user: ' + err.message, 'error');
+    }
   } finally {
     showLoader(false);
   }
@@ -2510,18 +2866,44 @@ async function createAppUser() {
 
 async function deleteAppUser(docId) {
   if (!docId) return;
-  confirm2('Remove User', 'Remove this user? They will no longer be able to log in.', async () => {
+  confirm2('Revoke Access', "Revoke this user's access? They won't be able to log in. You can restore it later.", async () => {
     showLoader(true);
     try {
-      await deleteDoc(doc(db, 'users', docId));
-      toast('User removed', 'success');
+      await updateDoc(doc(db, 'users', docId), { active: false });
+      toast('Access revoked', 'success');
       renderUsersAdmin();
     } catch(err) {
-      toast('Error removing user: ' + err.message, 'error');
+      toast('Error: ' + err.message, 'error');
     } finally {
       showLoader(false);
     }
-  });
+  }, '🔒');
+}
+
+async function editUserRole(docId, newRole) {
+  showLoader(true);
+  try {
+    await updateDoc(doc(db, 'users', docId), { role: newRole });
+    toast('Role updated to ' + newRole, 'success');
+  } catch(err) {
+    toast('Error updating role: ' + err.message, 'error');
+    renderUsersAdmin(); // re-render to reset dropdown
+  } finally {
+    showLoader(false);
+  }
+}
+
+async function restoreUserAccess(docId) {
+  showLoader(true);
+  try {
+    await updateDoc(doc(db, 'users', docId), { active: true });
+    toast('Access restored', 'success');
+    renderUsersAdmin();
+  } catch(err) {
+    toast('Error: ' + err.message, 'error');
+  } finally {
+    showLoader(false);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -2534,17 +2916,17 @@ Object.assign(window, {
   openMemberModal, saveMember, deleteMember, openProfile, onMemberPlanChange, previewPhoto,
   openPlanModal, savePlan, deletePlan,
   openPaymentModal, savePayment, deletePayment, openRenewalModal, onPayMemberChange, onPayPlanChange, exportCSV,
+  renderReceivables, openCollectModal, saveCollect, deleteReceivable,
+  openInvoiceModal, printInvoice, shareInvoiceWA,
   openEnquiryModal, saveEnquiry, updateEnqStatus, deleteEnquiry,
   openStaffModal, saveStaff, deleteStaff,
   renderMembers, renderPayments, renderEnquiries,
-  sendWA_expiry, sendWA_receipt, sendWA_enquiry,
+  sendWA_expiry, sendWA_receipt, sendWA_enquiry, sendWA_due,
   openSettingsModal, saveSettings, saveGymSettings, createAppUser, deleteAppUser, renderUsersAdmin,
+  editUserRole, restoreUserAccess,
   showForgotPassword, hideForgotPassword, sendResetEmail,
 });
 
-// ─────────────────────────────────────────────────────────────────
-//  INIT
-// ─────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────
 //  INIT
 // ─────────────────────────────────────────────────────────────────
