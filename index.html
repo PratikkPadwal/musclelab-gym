@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -624,6 +625,13 @@
               </div>
               <div id="expiringList" class="expiry-list"></div>
             </div>
+            <div class="card" style="margin-top:18px">
+              <div class="section-header">
+                <div class="section-title">💸 Pending Dues</div>
+                <span id="dashDuesBadge" class="badge badge-orange">0</span>
+              </div>
+              <div id="dashDuesList" class="expiry-list"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -1056,7 +1064,8 @@
     <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
       <button class="btn btn-secondary" onclick="closeModal('invoiceModal')">Close</button>
       <button class="btn btn-secondary" onclick="printInvoice()">🖨️ Print</button>
-      <button class="btn btn-primary" onclick="downloadInvoiceImage()">⬇️ Download Image</button>
+      <button class="btn btn-primary" onclick="downloadInvoiceImage()">⬇️ Image</button>
+      <button class="btn btn-primary" onclick="downloadInvoicePDF()">📄 PDF</button>
       <button class="btn btn-whatsapp" onclick="shareInvoiceWA()">💬 Share via WhatsApp</button>
     </div>
   </div>
@@ -1581,7 +1590,7 @@ function renderDashboard() {
     { icon:'💪', val: active + expiring,         label:'Active Members',      cls:'green' },
     { icon:'💰', val: fmtMoney(monthRev),        label:'Revenue This Month',  cls:'blue' },
     { icon:'⏳', val: expiring,                  label:'Expiring This Week',  cls:'orange' },
-    { icon:'⚠️', val: expired,                  label:'Pending Dues',        cls:'orange' },
+    { icon:'⚠️', val: fmtMoney(S.receivables.filter(r=>r.status==='pending').reduce((s,r)=>s+Number(r.amount||0),0)), label:'Pending Dues',  cls:'orange' },
     { icon:'📋', val: newEnq,                    label:'New Enquiries',       cls:'purple' },
   ];
 
@@ -1605,6 +1614,25 @@ function renderDashboard() {
     : `<table><thead><tr><th>Member</th><th>Amount</th><th>Mode</th><th>Date</th></tr></thead><tbody>${rp.map(p=>
         `<tr><td><strong>${p.memberName}</strong></td><td style="color:var(--success);font-weight:700">${fmtMoney(p.amount)}</td><td class="td-muted">${p.mode}</td><td class="td-muted">${fmtDate(p.date)}</td></tr>`
       ).join('')}</tbody></table>`;
+
+  // Pending Dues on dashboard
+  const pendingRx = S.receivables.filter(r => r.status === 'pending');
+  const pendingTotal = pendingRx.reduce((s,r) => s + Number(r.amount||0), 0);
+  document.getElementById('dashDuesBadge').textContent = pendingRx.length;
+  document.getElementById('dashDuesList').innerHTML = pendingRx.length === 0
+    ? `<div style="color:var(--text2);font-size:13px;text-align:center;padding:18px">✅ No pending dues</div>`
+    : `${pendingRx.slice(0,5).map(r =>
+        `<div class="expiry-item">
+          <div>
+            <div style="font-weight:600;font-size:13px">${r.memberName}</div>
+            <div style="color:var(--text2);font-size:11px">${r.description||'—'}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:13px;font-weight:700;color:var(--warning)">${fmtMoney(r.amount)}</div>
+            <button class="btn btn-whatsapp btn-sm" onclick="sendWA_due('${r.id}')" style="margin-top:4px;padding:3px 8px;font-size:11px">💬 WA</button>
+          </div>
+        </div>`
+      ).join('')}${pendingRx.length>5?`<div style="text-align:center;padding:8px;font-size:12px;color:var(--text2)">+${pendingRx.length-5} more — <a onclick="navigate('payments')" style="color:var(--primary);cursor:pointer">View all →</a></div>`:''}` ;
 
   // Expiring list
   document.getElementById('expiringBadge').textContent = expiringList.length;
@@ -2754,9 +2782,35 @@ async function downloadInvoiceImage() {
     link.download = `receipt_${p ? p.receiptNo : 'invoice'}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
-    toast('Invoice downloaded!', 'success');
+    toast('Invoice image downloaded!', 'success');
   } catch(e) {
     toast('Download failed: ' + e.message, 'error');
+  } finally {
+    showLoader(false);
+  }
+}
+
+async function downloadInvoicePDF() {
+  const el = document.getElementById('invoiceContent');
+  if (!el) return;
+  if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
+    toast('PDF library not loaded yet, try again', 'warning'); return;
+  }
+  showLoader(true);
+  try {
+    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    // A4 width 210mm; calculate height proportionally
+    const pdfW = 210;
+    const pdfH = Math.round((canvas.height / canvas.width) * pdfW);
+    const pdf = new jsPDF({ orientation: pdfH > pdfW ? 'p' : 'l', unit: 'mm', format: [pdfW, pdfH] });
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+    const p = S.payments.find(x => x.id === _invoicePayId);
+    pdf.save(`receipt_${p ? p.receiptNo : 'invoice'}.pdf`);
+    toast('PDF downloaded!', 'success');
+  } catch(e) {
+    toast('PDF export failed: ' + e.message, 'error');
   } finally {
     showLoader(false);
   }
@@ -3089,7 +3143,7 @@ Object.assign(window, {
   openPlanModal, savePlan, deletePlan,
   openPaymentModal, savePayment, deletePayment, openRenewalModal, onPayMemberChange, onPayPlanChange, exportCSV,
   renderReceivables, openCollectModal, saveCollect, deleteReceivable,
-  openInvoiceModal, printInvoice, downloadInvoiceImage, shareInvoiceWA,
+  openInvoiceModal, printInvoice, downloadInvoiceImage, downloadInvoicePDF, shareInvoiceWA,
   updateMemberDue,
   openEnquiryModal, saveEnquiry, updateEnqStatus, deleteEnquiry,
   openStaffModal, saveStaff, deleteStaff,
