@@ -574,6 +574,7 @@
       <a class="nav-item" data-page="members"   data-requires-role="admin receptionist" onclick="navigate('members')"><span class="nav-icon">👥</span><span>Members</span></a>
       <a class="nav-item" data-page="plans"     data-requires-role="admin receptionist" onclick="navigate('plans')"><span class="nav-icon">💳</span><span>Plans</span></a>
       <a class="nav-item" data-page="payments"  data-requires-role="admin receptionist" onclick="navigate('payments')"><span class="nav-icon">💰</span><span>Payments</span></a>
+      <a class="nav-item" data-page="dues" onclick="navigate('dues')"><span class="nav-icon">💸</span><span>Dues</span></a>
       <a class="nav-item" data-page="enquiries" onclick="navigate('enquiries')"><span class="nav-icon">📋</span><span>Enquiries</span></a>
       <a class="nav-item" data-page="staff"     data-requires-role="admin" onclick="navigate('staff')"><span class="nav-icon">👨‍💼</span><span>Staff</span></a>
       <a class="nav-item" data-page="analytics" data-requires-role="admin" onclick="navigate('analytics')"><span class="nav-icon">📈</span><span>Analytics</span></a>
@@ -724,6 +725,19 @@
           <button class="btn btn-primary" data-requires-role="admin" onclick="openStaffModal()">➕ Add Staff</button>
         </div>
         <div class="staff-grid" id="staffGrid"></div>
+      </div>
+
+      <!-- ─── DUES ────────────────────────────────── -->
+      <div id="duesPage" class="page">
+        <div class="section-header" style="margin-bottom:18px">
+          <div>
+            <div class="section-title" style="font-size:20px">💸 Pending Dues</div>
+            <div class="section-sub">Members with outstanding balance — recover pending fees</div>
+          </div>
+          <span id="duesPageBadge" class="badge badge-orange">0</span>
+        </div>
+        <div id="duesSummaryStrip" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px"></div>
+        <div class="card" style="padding:0"><div class="table-wrapper" id="duesPageTable"></div></div>
       </div>
 
       <!-- ─── ANALYTICS ─────────────────────────── -->
@@ -933,7 +947,10 @@
     <div class="modal-body">
       <div class="form-group"><label>Select Member *</label><select id="payMember" onchange="onPayMemberChange()"><option value="">Select member</option></select></div>
       <div class="form-group"><label>Select Plan *</label><select id="payPlan" onchange="onPayPlanChange()"><option value="">Select plan</option></select></div>
-      <div class="form-group"><label>Amount (₹) *</label><input type="number" id="payAmt" placeholder="Enter amount" min="0"></div>
+      <div class="form-group">
+        <label>Amount (₹) *</label>
+        <input type="number" id="payAmt" placeholder="Enter amount" min="0" oninput="updatePayDue()">
+      </div>
       <div class="form-group">
         <label>Payment Mode *</label>
         <select id="payMode">
@@ -945,8 +962,8 @@
       <div class="form-group"><label>Date *</label><input type="date" id="payDate"></div>
       <div class="form-group"><label>Note</label><input type="text" id="payNote" placeholder="Optional note"></div>
       <div class="form-group">
-        <label>Amount Due / Pending (₹) <span style="color:var(--text2);font-weight:400;font-size:11px">(leave 0 if fully paid)</span></label>
-        <input type="number" id="payDue" placeholder="0 = fully paid" min="0" value="0">
+        <label>Due / Pending Amount (₹) <span style="color:var(--text2);font-weight:400;font-size:11px">auto-calculated · edit if needed</span></label>
+        <input type="number" id="payDue" placeholder="0" min="0" value="0" style="background:var(--bg4)">
       </div>
     </div>
     <div class="modal-footer">
@@ -1209,6 +1226,40 @@ async function load() {
     toast('Failed to load data: ' + e.message, 'error');
   } finally {
     showLoader(false);
+  }
+}
+
+// One-time sync: create receivable records for existing partial payments that were
+// recorded before due-tracking was added. Safe to run on every load — skips
+// payments that already have a receivable or are fully paid.
+async function syncMissingDues() {
+  const created = [];
+  for (const p of S.payments) {
+    // Skip if a receivable already exists for this payment
+    if (S.receivables.some(r => r.relatedPayId === p.id)) continue;
+    const plan = S.plans.find(pl => pl.id === p.planId);
+    if (!plan) continue;
+    const due = Math.round((plan.price - Number(p.amount || 0)) * 100) / 100;
+    if (due <= 0) continue;
+    const member = S.members.find(m => m.id === p.memberId);
+    const rx = {
+      id: uid('rx'),
+      memberId:         p.memberId,
+      memberName:       p.memberName || (member ? member.name : ''),
+      phone:            member ? member.phone : '',
+      amount:           due,
+      description:      `Balance for ${plan.name} (${p.receiptNo})`,
+      relatedReceiptNo: p.receiptNo,
+      relatedPayId:     p.id,
+      createdAt:        p.date || todayStr(),
+      status:           'pending',
+    };
+    S.receivables.push(rx);
+    created.push(fsSet('receivables', rx.id, rx));
+  }
+  if (created.length) {
+    await Promise.all(created);
+    console.log(`[syncMissingDues] Created ${created.length} missing due record(s).`);
   }
 }
 
@@ -1495,7 +1546,7 @@ function showApp() {
 // ─────────────────────────────────────────────────────────────────
 //  NAVIGATION
 // ─────────────────────────────────────────────────────────────────
-const PAGE_TITLES = { dashboard:'Dashboard', members:'Members', plans:'Plans', payments:'Payments', enquiries:'Enquiries', staff:'Staff', analytics:'Analytics', settings:'Settings' };
+const PAGE_TITLES = { dashboard:'Dashboard', members:'Members', plans:'Plans', payments:'Payments', dues:'Pending Dues', enquiries:'Enquiries', staff:'Staff', analytics:'Analytics', settings:'Settings' };
 
 const RESTRICTED_PAGES = {
   members:   ['admin','receptionist'],
@@ -1523,7 +1574,7 @@ function navigate(page) {
 }
 
 function renderPage(page) {
-  const map = { dashboard:renderDashboard, members:renderMembers, plans:renderPlans, payments:renderPayments, enquiries:renderEnquiries, staff:renderStaff, analytics:renderAnalytics, settings:renderSettings };
+  const map = { dashboard:renderDashboard, members:renderMembers, plans:renderPlans, payments:renderPayments, dues:renderDuesPage, enquiries:renderEnquiries, staff:renderStaff, analytics:renderAnalytics, settings:renderSettings };
   if (map[page]) map[page]();
 }
 
@@ -2113,10 +2164,16 @@ function onPayMemberChange() {
 
 function onPayPlanChange() {
   const plan = getPlan(document.getElementById('payPlan').value);
-  if (plan) {
-    document.getElementById('payAmt').value = plan.price;
-    document.getElementById('payDue').value = '0';
-  }
+  if (plan) document.getElementById('payAmt').value = plan.price;
+  updatePayDue();
+}
+
+function updatePayDue() {
+  const plan = getPlan(document.getElementById('payPlan').value);
+  if (!plan) { document.getElementById('payDue').value = '0'; return; }
+  const paid = parseFloat(document.getElementById('payAmt').value || 0) || 0;
+  const due  = Math.max(0, plan.price - paid);
+  document.getElementById('payDue').value = due > 0 ? due : '0';
 }
 
 async function savePayment() {
@@ -2214,6 +2271,63 @@ function exportCSV() {
 // ─────────────────────────────────────────────────────────────────
 //  RECEIVABLES
 // ─────────────────────────────────────────────────────────────────
+function renderDuesPage() {
+  const pending = S.receivables.filter(r => r.status === 'pending');
+  const total   = pending.reduce((s,r) => s + Number(r.amount||0), 0);
+  const badge   = document.getElementById('duesPageBadge');
+  if (badge) badge.textContent = pending.length;
+
+  const strip = document.getElementById('duesSummaryStrip');
+  if (strip) {
+    const uniqueMembers = [...new Set(pending.map(r => r.memberId))].length;
+    strip.innerHTML = [
+      { icon:'⚠️', val: pending.length,     label:'Open Dues',        cls:'orange' },
+      { icon:'👥', val: uniqueMembers,      label:'Members Affected', cls:'' },
+      { icon:'💰', val: fmtMoney(total),    label:'Total Pending',    cls:'red'  },
+    ].map(s => `<div class="stat-card ${s.cls}">
+      <span class="stat-icon">${s.icon}</span>
+      <div class="stat-number ${s.cls}">${s.val}</div>
+      <div class="stat-label">${s.label}</div>
+    </div>`).join('');
+  }
+
+  const wrap = document.getElementById('duesPageTable');
+  if (!wrap) return;
+  if (!pending.length) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:48px">
+      <div class="empty-icon">✅</div>
+      <div class="empty-title">No Pending Dues</div>
+      <div class="empty-text">All members are fully paid up. Great job!</div>
+    </div>`;
+    return;
+  }
+
+  const canCollect = ['admin','receptionist'].includes(currentUserRole);
+  const sorted = [...pending].sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
+
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Date</th><th>Member</th><th>Phone</th><th>Description</th>
+        <th style="text-align:right">Amount Due</th><th>Actions</th>
+      </tr></thead>
+      <tbody>${sorted.map(r => `<tr>
+        <td class="td-muted">${fmtDate(r.createdAt)}</td>
+        <td><strong>${r.memberName}</strong></td>
+        <td class="td-muted">${r.phone}</td>
+        <td class="td-muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.description}</td>
+        <td style="text-align:right;color:var(--warning);font-weight:700;font-size:14px">${fmtMoney(r.amount)}</td>
+        <td><div class="actions-group">
+          ${canCollect ? `<button class="btn btn-success btn-sm" onclick="openCollectModal('${r.id}')">&#128176; Collect</button>` : '<span class="badge badge-gray" style="font-size:11px">View only</span>'}
+          ${r.relatedPayId ? `<button class="btn btn-icon btn-sm" title="View Invoice" onclick="openInvoiceModal('${r.relatedPayId}')">&#129534;</button>` : ''}
+          <button class="btn btn-whatsapp btn-sm" onclick="sendWA_due('${r.id}')">&#128172; Remind</button>
+          ${canCollect ? `<button class="btn btn-icon btn-sm" onclick="deleteReceivable('${r.id}')" style="color:var(--danger)">&#128465;</button>` : ''}
+        </div></td>
+      </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
 function getLastPaymentId(memberId) {
   const pays = S.payments.filter(p => p.memberId === memberId);
   if (!pays.length) return null;
@@ -3248,12 +3362,11 @@ Object.assign(window, {
   handleLogin, doLogout, showApp, setupAdmin,
   navigate, toggleSidebar, closeSidebar,
   openModal, closeModal,
-  openMemberModal, saveMember, deleteMember, openProfile, onMemberPlanChange, previewPhoto,
+  openMemberModal, saveMember, deleteMember, openProfile, onMemberPlanChange, updateMemberDue, updatePayDue, previewPhoto,
   openPlanModal, savePlan, deletePlan,
   openPaymentModal, savePayment, deletePayment, openRenewalModal, onPayMemberChange, onPayPlanChange, exportCSV,
-  renderReceivables, openCollectModal, saveCollect, deleteReceivable,
+  renderReceivables, renderDuesPage, openCollectModal, saveCollect, deleteReceivable,
   openInvoiceModal, printInvoice, downloadInvoiceImage, downloadInvoicePDF, shareInvoiceWA,
-  updateMemberDue,
   openEnquiryModal, saveEnquiry, updateEnqStatus, deleteEnquiry,
   openStaffModal, saveStaff, deleteStaff,
   renderMembers, renderPayments, renderEnquiries,
@@ -3291,6 +3404,7 @@ onAuthStateChanged(auth, async (user) => {
 
 load().then(async () => {
   await initDefaults();
+  await syncMissingDues();
   setupDashboardListeners();
 }).catch(e => {
   toast('Connection failed: ' + e.message, 'error');
