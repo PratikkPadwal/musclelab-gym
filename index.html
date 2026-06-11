@@ -1271,6 +1271,38 @@ const auth    = getAuth(_app);
 const authAux = getAuth(_appAux);
 
 // ─────────────────────────────────────────────────────────────────
+//  IDLE AUTO-LOGOUT  (8 hours of inactivity → sign out)
+// ─────────────────────────────────────────────────────────────────
+const IDLE_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 hours
+const IDLE_WARN_MS    = IDLE_TIMEOUT_MS - 60 * 1000; // warn 1 min before
+let _idleTimer, _idleWarnTimer;
+
+function _resetIdleTimer() {
+  clearTimeout(_idleTimer);
+  clearTimeout(_idleWarnTimer);
+  _idleWarnTimer = setTimeout(() => {
+    toast('⚠️ You will be logged out in 1 minute due to inactivity.', 'error');
+  }, IDLE_WARN_MS);
+  _idleTimer = setTimeout(async () => {
+    toast('🔒 Session expired due to inactivity.', 'error');
+    await signOut(auth);
+  }, IDLE_TIMEOUT_MS);
+}
+
+function startIdleTimer() {
+  const events = ['mousemove','mousedown','keydown','scroll','touchstart','click'];
+  events.forEach(e => document.addEventListener(e, _resetIdleTimer, { passive: true }));
+  _resetIdleTimer();
+}
+
+function stopIdleTimer() {
+  clearTimeout(_idleTimer);
+  clearTimeout(_idleWarnTimer);
+  const events = ['mousemove','mousedown','keydown','scroll','touchstart','click'];
+  events.forEach(e => document.removeEventListener(e, _resetIdleTimer));
+}
+
+// ─────────────────────────────────────────────────────────────────
 //  FIRESTORE HELPERS
 // ─────────────────────────────────────────────────────────────────
 async function fsSet(coll, id, data) {
@@ -1629,6 +1661,7 @@ async function handleLogin(e) {
   showLoader(true);
   try {
     await signInWithEmailAndPassword(auth, email, pass);
+    startIdleTimer();
     // onAuthStateChanged handles the rest
   } catch(err) {
     errEl.textContent = '❌ Invalid email or password';
@@ -1640,7 +1673,7 @@ async function handleLogin(e) {
 function doLogout() {
   confirm2('Logout', 'Are you sure you want to logout?', async () => {
     showLoader(true);
-    try { await signOut(auth); } catch(e) { toast('Logout error: ' + e.message, 'error'); showLoader(false); }
+    try { stopIdleTimer(); await signOut(auth); } catch(e) { toast('Logout error: ' + e.message, 'error'); showLoader(false); }
   }, '🚪');
 }
 
