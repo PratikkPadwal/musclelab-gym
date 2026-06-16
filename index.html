@@ -3460,39 +3460,12 @@ async function shareInvoiceWA() {
   if (!_invoicePayId) return;
   const p = S.payments.find(x => x.id === _invoicePayId);
   if (!p) return;
-  const m = getMember(p.memberId);
-  const el = document.getElementById('invoiceContent');
+  const m      = getMember(p.memberId);
+  const phone  = m ? m.phone : (p.phone || '');
+  const rx     = S.receivables.find(r => r.relatedPayId === p.id && r.status === 'pending');
+  const due    = rx ? rx.amount : 0;
 
-  // Try image share via Web Share API (works on mobile Chrome/Safari)
-  if (el && typeof html2canvas !== 'undefined' && navigator.share && navigator.canShare) {
-    showLoader(true);
-    try {
-      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-      canvas.toBlob(async blob => {
-        const file = new File([blob], `receipt_${p.receiptNo}.png`, { type: 'image/png' });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: `Receipt ${p.receiptNo}`, text: `Receipt from ${getGymName()}` });
-          toast('Invoice shared!', 'success');
-        } else {
-          // Fallback: download + open WA
-          const link = document.createElement('a');
-          link.href = canvas.toDataURL('image/png');
-          link.download = `receipt_${p.receiptNo}.png`;
-          link.click();
-          setTimeout(() => sendWA_receipt(p.id), 600);
-          toast('Image downloaded. Opening WhatsApp…', 'info');
-        }
-        showLoader(false);
-      }, 'image/png');
-      return;
-    } catch(e) {
-      showLoader(false);
-    }
-  }
-
-  // Desktop fallback: formatted text via WhatsApp
-  const rx  = S.receivables.find(r => r.relatedPayId === p.id && r.status === 'pending');
-  const due = rx ? rx.amount : 0;
+  // Pre-build the text receipt message (sent alongside the image)
   const msg =
     `🧾 *RECEIPT — ${getGymName()}*\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
@@ -3500,9 +3473,9 @@ async function shareInvoiceWA() {
     `Date: ${fmtDate(p.date)}\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
     `*Member:* ${m ? m.name : p.memberName}\n` +
-    (m ? `*ID:* ${m.id} | *Phone:* ${m.phone}\n` : '') +
+    (phone ? `*Phone:* ${phone}\n` : '') +
     `━━━━━━━━━━━━━━━━━━━━\n` +
-    (p.planName ? `*Plan:* ${p.planName}\n` : '') +
+    (p.planName   ? `*Plan:* ${p.planName}\n`              : '') +
     (p.expiryDate ? `*Valid Till:* ${fmtDate(p.expiryDate)}\n` : '') +
     `*Mode:* ${p.mode}\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
@@ -3512,7 +3485,33 @@ async function shareInvoiceWA() {
     `${S.gymSettings.tagline || 'Thank you for choosing us!'}\n` +
     `📞 ${getGymPhone()}`;
 
-  const phone = m ? m.phone : '';
+  const el = document.getElementById('invoiceContent');
+
+  // Step 1: Capture invoice as image and download it to device
+  if (el && typeof html2canvas !== 'undefined') {
+    showLoader(true);
+    try {
+      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      const link   = document.createElement('a');
+      link.href     = canvas.toDataURL('image/png');
+      link.download = `receipt_${p.receiptNo}.png`;
+      link.click();
+      showLoader(false);
+
+      // Step 2: Open the member's WhatsApp chat directly with pre-filled message
+      setTimeout(() => {
+        if (phone) openWA(phone, msg);
+        else window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+      }, 600);
+
+      toast('📥 Invoice saved! Opening WhatsApp chat…', 'success');
+      return;
+    } catch(e) {
+      showLoader(false);
+    }
+  }
+
+  // Fallback (no html2canvas): open WA with text only
   if (phone) openWA(phone, msg);
   else window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 }
