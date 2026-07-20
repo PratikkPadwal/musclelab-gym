@@ -1,4 +1,4 @@
-﻿
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getFirestore, collection, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
@@ -2564,8 +2564,17 @@ onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUser = user;
     await fetchUserRole(user.uid);
-    showLoader(false);
     showApp();
+    load().then(async () => {
+      await initDefaults();
+      await syncMissingDues();
+      setupDashboardListeners();
+      showLoader(false);
+    }).catch(e => {
+      toast('Connection failed: ' + e.message, 'error');
+      console.error('Firebase init error:', e);
+      showLoader(false);
+    });
   } else {
     currentUser     = null;
     currentUserRole = null;
@@ -2579,14 +2588,5 @@ onAuthStateChanged(auth, async (user) => {
       showLoginPage();
     }
   }
-});
-
-load().then(async () => {
-  await initDefaults();
-  await syncMissingDues();
-  setupDashboardListeners();
-}).catch(e => {
-  toast('Connection failed: ' + e.message, 'error');
-  console.error('Firebase init error:', e);
 });
 
