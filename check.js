@@ -54,6 +54,7 @@ let _collectRxId    = null;
 
 const S = {
   members: [], plans: [], payments: [], enquiries: [], staff: [], receivables: [],
+  personalTraining: [], expenses: [],
   gymSettings: { name:'', phone:'', address:'', tagline:'', signature:'' },
   editMemberId: null, editPlanId: null, editEnqId: null, editStaffId: null,
   charts: {}
@@ -65,7 +66,7 @@ const S = {
 async function load() {
   showLoader(true);
   try {
-    const [mSnap, plSnap, pySnap, eSnap, stSnap, rxSnap, gsSnap] = await Promise.all([
+    const [mSnap, plSnap, pySnap, eSnap, stSnap, rxSnap, gsSnap, ptSnap, exSnap] = await Promise.all([
       getDocs(collection(db, 'members')),
       getDocs(collection(db, 'plans')),
       getDocs(collection(db, 'payments')),
@@ -73,13 +74,17 @@ async function load() {
       getDocs(collection(db, 'staff')),
       getDocs(collection(db, 'receivables')),
       getDoc(doc(db, 'settings', 'gym')),
+      getDocs(collection(db, 'personalTraining')),
+      getDocs(collection(db, 'expenses')),
     ]);
-    S.members     = mSnap.docs.map(d  => ({ ...d.data(), id: d.id }));
-    S.plans       = plSnap.docs.map(d => ({ ...d.data(), id: d.id }));
-    S.payments    = pySnap.docs.map(d => ({ ...d.data(), id: d.id }));
-    S.enquiries   = eSnap.docs.map(d  => ({ ...d.data(), id: d.id }));
-    S.staff       = stSnap.docs.map(d => ({ ...d.data(), id: d.id }));
-    S.receivables = rxSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+    S.members          = mSnap.docs.map(d  => ({ ...d.data(), id: d.id }));
+    S.plans            = plSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+    S.payments         = pySnap.docs.map(d => ({ ...d.data(), id: d.id }));
+    S.enquiries        = eSnap.docs.map(d  => ({ ...d.data(), id: d.id }));
+    S.staff            = stSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+    S.receivables      = rxSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+    S.personalTraining = ptSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+    S.expenses         = exSnap.docs.map(d => ({ ...d.data(), id: d.id }));
     if (gsSnap.exists()) Object.assign(S.gymSettings, gsSnap.data());
   } catch(e) {
     toast('Failed to load data: ' + e.message, 'error');
@@ -405,7 +410,7 @@ function showApp() {
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  NAVIGATION
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const PAGE_TITLES = { dashboard:'Dashboard', members:'Members', plans:'Plans', payments:'Payments', dues:'Pending Dues', reports:'Reports', enquiries:'Enquiries', staff:'Staff', analytics:'Analytics', settings:'Settings' };
+const PAGE_TITLES = { dashboard:'Dashboard', members:'Members', plans:'Plans', payments:'Payments', dues:'Pending Dues', reports:'Reports', enquiries:'Enquiries', staff:'Staff', analytics:'Analytics', settings:'Settings', personaltraining:'Personal Training', expenses:'Expenses' };
 
 const RESTRICTED_PAGES = {
   members:   ['admin','receptionist'],
@@ -434,7 +439,7 @@ function navigate(page) {
 }
 
 function renderPage(page) {
-  const map = { dashboard:renderDashboard, members:renderMembers, plans:renderPlans, payments:renderPayments, dues:renderDuesPage, reports:renderReports, enquiries:renderEnquiries, staff:renderStaff, analytics:renderAnalytics, settings:renderSettings };
+  const map = { dashboard:renderDashboard, members:renderMembers, plans:renderPlans, payments:renderPayments, dues:renderDuesPage, reports:renderReports, enquiries:renderEnquiries, staff:renderStaff, analytics:renderAnalytics, settings:renderSettings, personaltraining:renderPersonalTraining, expenses:renderExpenses };
   if (map[page]) map[page]();
 }
 
@@ -474,9 +479,11 @@ function setupDashboardListeners() {
     if (document.getElementById('dashboardPage').classList.contains('active')) renderDashboard();
   };
   _dashUnsubs.push(
-    onSnapshot(collection(db,'members'),   snap => { S.members   = snap.docs.map(d => ({...d.data(),id:d.id})); refresh(); }),
-    onSnapshot(collection(db,'payments'),  snap => { S.payments  = snap.docs.map(d => ({...d.data(),id:d.id})); refresh(); }),
-    onSnapshot(collection(db,'enquiries'), snap => { S.enquiries = snap.docs.map(d => ({...d.data(),id:d.id})); refresh(); })
+    onSnapshot(collection(db,'members'),         snap => { S.members          = snap.docs.map(d => ({...d.data(),id:d.id})); refresh(); }),
+    onSnapshot(collection(db,'payments'),        snap => { S.payments         = snap.docs.map(d => ({...d.data(),id:d.id})); refresh(); }),
+    onSnapshot(collection(db,'enquiries'),       snap => { S.enquiries        = snap.docs.map(d => ({...d.data(),id:d.id})); refresh(); }),
+    onSnapshot(collection(db,'personalTraining'),snap => { S.personalTraining = snap.docs.map(d => ({...d.data(),id:d.id})); refresh(); }),
+    onSnapshot(collection(db,'expenses'),        snap => { S.expenses         = snap.docs.map(d => ({...d.data(),id:d.id})); refresh(); })
   );
 }
 
@@ -495,7 +502,8 @@ function renderDashboard() {
   });
 
   const thisMonth = `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
-  const monthRev = S.payments.filter(p => p.date && p.date.startsWith(thisMonth)).reduce((s,p)=>s+Number(p.amount||0),0);
+  const monthRev = S.payments.filter(p => p.date && p.date.startsWith(thisMonth)).reduce((s,p)=>s+Number(p.amount||0),0)
+    + S.personalTraining.filter(pt => pt.date && pt.date.startsWith(thisMonth)).reduce((s,pt)=>s+Number(pt.amount||0),0);
   const newEnq = S.enquiries.filter(e => e.status === 'New').length;
 
   const stats = [
@@ -1244,7 +1252,9 @@ function _rptMonthly() {
   if (!mv) { _setSummary([]); _setTable([],[],'Select a month above'); return; }
 
   const pays = S.payments.filter(p => p.date && p.date.startsWith(mv));
-  const total  = pays.reduce((s,p) => s+Number(p.amount||0), 0);
+  const ptPays = S.personalTraining.filter(pt => pt.date && pt.date.startsWith(mv));
+  const ptTotal = ptPays.reduce((s,pt)=>s+Number(pt.amount||0),0);
+  const total  = pays.reduce((s,p) => s+Number(p.amount||0), 0) + ptTotal;
   const cash   = pays.filter(p=>p.mode==='Cash').reduce((s,p)=>s+Number(p.amount||0),0);
   const upi    = pays.filter(p=>p.mode==='UPI').reduce((s,p)=>s+Number(p.amount||0),0);
   const card   = pays.filter(p=>p.mode==='Card').reduce((s,p)=>s+Number(p.amount||0),0);
@@ -1261,6 +1271,7 @@ function _rptMonthly() {
     { icon:'ðŸ’µ', val: fmtMoney(cash),          label:'Cash',             cls:''       },
     { icon:'ðŸ“±', val: fmtMoney(upi),           label:'UPI',              cls:''       },
     { icon:'ðŸ’³', val: fmtMoney(card),          label:'Card',             cls:''       },
+    { icon:'🏋️', val: fmtMoney(ptTotal),       label:'Personal Training',cls:'purple' },
     { icon:'ðŸ‘¥', val: newMembers.length,        label:'New Members',      cls:'green'  },
     { icon:'âš ï¸', val: fmtMoney(dueTotal),      label:'Dues Created',     cls:'orange' },
   ]);
@@ -1872,7 +1883,8 @@ function renderAnalytics() {
   Object.values(S.charts).forEach(c => { try { c.destroy(); } catch(e){} });
   S.charts = {};
 
-  const totalRev  = S.payments.reduce((s,p)=>s+Number(p.amount||0),0);
+  const totalRev  = S.payments.reduce((s,p)=>s+Number(p.amount||0),0)
+    + S.personalTraining.reduce((s,pt)=>s+Number(pt.amount||0),0);
   const active    = S.members.filter(m=>getMemberStatus(m.expiryDate)!=='Expired').length;
   const converted = S.enquiries.filter(e=>e.status==='Converted').length;
   const convRate  = S.enquiries.length ? Math.round(converted/S.enquiries.length*100) : 0;
@@ -1910,8 +1922,11 @@ function renderAnalytics() {
 
   const COLORS = ['#E31E24','#3b82f6','#22c55e','#f59e0b','#8b5cf6','#ec4899','#14b8a6'];
 
-  // Revenue
-  const revData = keys.map(k => S.payments.filter(p=>p.date&&p.date.startsWith(k)).reduce((s,p)=>s+Number(p.amount||0),0));
+  // Revenue (membership + personal training)
+  const revData = keys.map(k =>
+    S.payments.filter(p=>p.date&&p.date.startsWith(k)).reduce((s,p)=>s+Number(p.amount||0),0) +
+    S.personalTraining.filter(pt=>pt.date&&pt.date.startsWith(k)).reduce((s,pt)=>s+Number(pt.amount||0),0)
+  );
   S.charts.rev = new Chart(document.getElementById('chartRevenue'), {
     type:'bar',
     data:{ labels, datasets:[{ label:'Revenue', data:revData, backgroundColor:'rgba(227,30,36,0.65)', borderColor:'#E31E24', borderWidth:2, borderRadius:6 }] },
@@ -2534,6 +2549,206 @@ async function restoreUserAccess(docId) {
 }
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+//  PERSONAL TRAINING
+// ─────────────────────────────────────────────────────────────────────────────
+function renderPersonalTraining() {
+  const q    = (document.getElementById('ptSearch')?.value || '').toLowerCase();
+  const from = document.getElementById('ptFrom')?.value || '';
+  const to   = document.getElementById('ptTo')?.value   || '';
+
+  const list = [...S.personalTraining].reverse().filter(pt => {
+    const matchQ = !q || pt.memberName.toLowerCase().includes(q) || pt.trainerName.toLowerCase().includes(q);
+    const matchF = !from || pt.date >= from;
+    const matchT = !to   || pt.date <= to;
+    return matchQ && matchF && matchT;
+  });
+
+  const thisMonth = (() => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`; })();
+  const monthTotal   = S.personalTraining.filter(pt => pt.date && pt.date.startsWith(thisMonth)).reduce((s,pt)=>s+Number(pt.amount||0),0);
+  const overallTotal = S.personalTraining.reduce((s,pt)=>s+Number(pt.amount||0),0);
+
+  document.getElementById('ptSummary').innerHTML = `
+    <div class="stat-card blue"><span class="stat-icon">🏋️</span><div class="stat-number blue">${fmtMoney(monthTotal)}</div><div class="stat-label">This Month</div></div>
+    <div class="stat-card green"><span class="stat-icon">💰</span><div class="stat-number green">${fmtMoney(overallTotal)}</div><div class="stat-label">Total Revenue</div></div>
+    <div class="stat-card"><span class="stat-icon">📋</span><div class="stat-number">${list.length}</div><div class="stat-label">Sessions (filtered)</div></div>`;
+
+  const wrap = document.getElementById('ptTable');
+  if (!list.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">🏋️</div><div class="empty-title">No Personal Training Records</div><button class="btn btn-primary" onclick="openPTModal()">➕ Add Record</button></div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Date</th><th>Member Name</th><th>Trainer</th><th>Sessions</th><th>Amount</th><th>Note</th><th>Actions</th></tr></thead>
+      <tbody>${list.map(pt => `<tr>
+        <td class="td-muted">${fmtDate(pt.date)}</td>
+        <td><strong>${pt.memberName}</strong></td>
+        <td class="td-muted">${pt.trainerName}</td>
+        <td class="td-muted" style="text-align:center">${pt.sessions || '—'}</td>
+        <td style="color:var(--success);font-weight:700">${fmtMoney(pt.amount)}</td>
+        <td class="td-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pt.note || '—'}</td>
+        <td>${currentUserRole === 'admin' ? `<button class="btn btn-icon btn-sm" title="Delete" onclick="deletePT('${pt.id}')" style="color:var(--danger)">🗑️</button>` : ''}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+function openPTModal() {
+  document.getElementById('ptMemberName').value  = '';
+  document.getElementById('ptTrainerName').value = '';
+  document.getElementById('ptAmount').value      = '';
+  document.getElementById('ptSessions').value    = '';
+  document.getElementById('ptDate').value        = todayStr();
+  document.getElementById('ptNote').value        = '';
+  const tList = document.getElementById('ptTrainerList');
+  if (tList) {
+    tList.innerHTML = S.staff.map(s => `<option value="${s.name}">`).join('');
+  }
+  openModal('ptModal');
+}
+
+async function savePT() {
+  const memberName  = document.getElementById('ptMemberName').value.trim();
+  const trainerName = document.getElementById('ptTrainerName').value.trim();
+  const amount      = parseFloat(document.getElementById('ptAmount').value);
+  const sessions    = parseInt(document.getElementById('ptSessions').value) || 0;
+  const date        = document.getElementById('ptDate').value;
+  const note        = document.getElementById('ptNote').value.trim();
+
+  if (!memberName)            { toast('Enter member name', 'error'); return; }
+  if (!trainerName)           { toast('Enter trainer name', 'error'); return; }
+  if (!amount || amount <= 0) { toast('Enter valid amount', 'error'); return; }
+  if (!date)                  { toast('Select date', 'error'); return; }
+
+  const record = {
+    id: uid('pt'), memberName, trainerName, amount, sessions, date, note,
+    addedBy: currentUserName, createdAt: todayStr(),
+  };
+  showLoader(true);
+  try {
+    S.personalTraining.push(record);
+    await fsSet('personalTraining', record.id, record);
+    closeModal('ptModal');
+    toast('Personal training record saved!', 'success');
+    renderPersonalTraining();
+  } catch(e) {
+    toast('Error saving record: ' + e.message, 'error');
+    S.personalTraining = S.personalTraining.filter(p => p.id !== record.id);
+  } finally {
+    showLoader(false);
+  }
+}
+
+function deletePT(id) {
+  confirm2('Delete Record', 'Remove this personal training record?', async () => {
+    showLoader(true);
+    try {
+      await fsDelete('personalTraining', id);
+      S.personalTraining = S.personalTraining.filter(p => p.id !== id);
+      toast('Record deleted', 'success');
+      renderPersonalTraining();
+    } catch(e) {
+      toast('Error deleting: ' + e.message, 'error');
+    } finally {
+      showLoader(false);
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  EXPENSES
+// ─────────────────────────────────────────────────────────────────────────────
+function renderExpenses() {
+  const q    = (document.getElementById('expSearch')?.value || '').toLowerCase();
+  const from = document.getElementById('expFrom')?.value || '';
+  const to   = document.getElementById('expTo')?.value   || '';
+
+  const list = [...S.expenses].reverse().filter(ex => {
+    const matchQ = !q || ex.description.toLowerCase().includes(q) || (ex.addedBy||'').toLowerCase().includes(q);
+    const matchF = !from || ex.date >= from;
+    const matchT = !to   || ex.date <= to;
+    return matchQ && matchF && matchT;
+  });
+
+  const thisMonth = (() => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`; })();
+  const monthExp  = S.expenses.filter(ex => ex.date && ex.date.startsWith(thisMonth)).reduce((s,ex)=>s+Number(ex.amount||0),0);
+  const totalExp  = S.expenses.reduce((s,ex)=>s+Number(ex.amount||0),0);
+
+  document.getElementById('expSummary').innerHTML = `
+    <div class="stat-card orange"><span class="stat-icon">📅</span><div class="stat-number orange">${fmtMoney(monthExp)}</div><div class="stat-label">This Month</div></div>
+    <div class="stat-card" style="border-color:var(--danger)"><span class="stat-icon">💸</span><div class="stat-number" style="color:var(--danger)">${fmtMoney(totalExp)}</div><div class="stat-label">Total Expenses</div></div>
+    <div class="stat-card"><span class="stat-icon">📋</span><div class="stat-number">${list.length}</div><div class="stat-label">Records (filtered)</div></div>`;
+
+  const wrap = document.getElementById('expTable');
+  if (!list.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">💸</div><div class="empty-title">No Expense Records</div><button class="btn btn-primary" onclick="openExpenseModal()">➕ Add Expense</button></div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Added By</th><th>Actions</th></tr></thead>
+      <tbody>${list.map(ex => `<tr>
+        <td class="td-muted">${fmtDate(ex.date)}</td>
+        <td><strong>${ex.description}</strong></td>
+        <td style="color:var(--danger);font-weight:700">${fmtMoney(ex.amount)}</td>
+        <td class="td-muted">${ex.addedBy || '—'}</td>
+        <td>${currentUserRole === 'admin' ? `<button class="btn btn-icon btn-sm" title="Delete" onclick="deleteExpense('${ex.id}')" style="color:var(--danger)">🗑️</button>` : ''}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+function openExpenseModal() {
+  document.getElementById('expDescription').value = '';
+  document.getElementById('expAmount').value      = '';
+  document.getElementById('expDate').value        = todayStr();
+  openModal('expenseModal');
+}
+
+async function saveExpense() {
+  const description = document.getElementById('expDescription').value.trim();
+  const amount      = parseFloat(document.getElementById('expAmount').value);
+  const date        = document.getElementById('expDate').value;
+
+  if (!description)           { toast('Enter expense description', 'error'); return; }
+  if (!amount || amount <= 0) { toast('Enter valid amount', 'error'); return; }
+  if (!date)                  { toast('Select date', 'error'); return; }
+
+  const record = {
+    id: uid('exp'), description, amount, date,
+    addedBy: currentUserName, createdAt: todayStr(),
+  };
+  showLoader(true);
+  try {
+    S.expenses.push(record);
+    await fsSet('expenses', record.id, record);
+    closeModal('expenseModal');
+    toast('Expense recorded!', 'success');
+    renderExpenses();
+  } catch(e) {
+    toast('Error saving expense: ' + e.message, 'error');
+    S.expenses = S.expenses.filter(ex => ex.id !== record.id);
+  } finally {
+    showLoader(false);
+  }
+}
+
+function deleteExpense(id) {
+  confirm2('Delete Expense', 'Remove this expense record?', async () => {
+    showLoader(true);
+    try {
+      await fsDelete('expenses', id);
+      S.expenses = S.expenses.filter(ex => ex.id !== id);
+      toast('Expense deleted', 'success');
+      renderExpenses();
+    } catch(e) {
+      toast('Error deleting: ' + e.message, 'error');
+    } finally {
+      showLoader(false);
+    }
+  });
+}
+
+
 //  WINDOW EXPORTS (required for ES module onclick handlers)
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 Object.assign(window, {
@@ -2553,6 +2768,8 @@ Object.assign(window, {
   openSettingsModal, saveSettings, saveGymSettings, createAppUser, deleteAppUser, renderUsersAdmin,
   editUserRole, restoreUserAccess,
   showForgotPassword, hideForgotPassword, sendResetEmail,
+  renderPersonalTraining, openPTModal, savePT, deletePT,
+  renderExpenses, openExpenseModal, saveExpense, deleteExpense,
 });
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
